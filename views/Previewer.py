@@ -3,16 +3,14 @@ from PySide2 import QtWidgets, QtCore, QtGui
 from views.PreviewerTextEdit import PreviewerTextEdit
 
 
-class PreviewerTabBar(QtWidgets.QWidget):
+class Previewer(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
-        super(PreviewerTabBar, self).__init__(parent)
+        super(Previewer, self).__init__(parent)
 
         self.create_widgets()
         self.create_layout()
         self.create_connections()
-
-        self.untitled_tab_label_indices = set()
 
         self.new_tab()
 
@@ -41,33 +39,29 @@ class PreviewerTabBar(QtWidgets.QWidget):
 
     def new_tab(self):
         index = self.tab_bar.count() - 1
-        label = self.get_new_tab_label()
+        label = self.get_default_tab_label()
         self.tab_bar.insertTab(index, label)
-        file_pane = PreviewerTextEdit()
-        self.stacked_widget.addWidget(file_pane)
+        self.stacked_widget.addWidget(PreviewerTextEdit())
         self.tab_bar.setCurrentIndex(index)
         return index
 
-    def get_new_tab_label(self):
+    def get_default_tab_label(self):
+        labels = []
+        for tab_index in range(self.tab_bar.count()):
+            labels.append(self.tab_bar.tabText(tab_index))
         index = 1
-        while index in self.untitled_tab_label_indices:
+        while True:
+            label = "Untitled - " + str(index)
             index += 1
-        self.untitled_tab_label_indices.add(index)
-        return "Untitled - " + str(index)
+            if label not in labels:
+                break
+        return label
 
     def close_tab(self, index):
         # Validate whether this is an appropriate tab to remove.
         count = self.tab_bar.count()
         if index == count - 1 or count <= 2:
             return
-        # If tab has not been renamed, free up its label for future use.
-        tab_label = self.tab_bar.tabText(index)
-        tab_label_index_string = tab_label[11:]
-        if tab_label.startswith("Untitled - ") and tab_label_index_string.isnumeric():
-            tab_label_index = int(tab_label_index_string)
-            if tab_label_index in self.untitled_tab_label_indices:
-                self.untitled_tab_label_indices.remove(tab_label_index)
-                print str(self.untitled_tab_label_indices)
         # Remove tab and associated stacked widget element.
         current_stacked_widget = self.stacked_widget.currentWidget()
         self.stacked_widget.removeWidget(current_stacked_widget)
@@ -76,6 +70,18 @@ class PreviewerTabBar(QtWidgets.QWidget):
     def close_current_tab(self):
         current_index = self.tab_bar.currentIndex()
         self.close_tab(current_index)
+
+    def close_all_tabs(self):
+        index = 0
+        count = self.tab_bar.count() - 1
+        print count
+        while index < count:
+            print "while iter " + str(index)
+            self.tab_bar.removeTab(0)
+            stacked_widget = self.stacked_widget.widget(0)
+            self.stacked_widget.removeWidget(stacked_widget)
+            index += 1
+        self.new_tab()
 
     def rename_tab(self, index):
         name, result = QtWidgets.QInputDialog.getText(self, "Rename Tab", "New tab name:")
@@ -103,12 +109,14 @@ class PreviewerTabBar(QtWidgets.QWidget):
         current_widget = self.stacked_widget.currentWidget()
         current_widget.refresh()
 
-    def save_to_file(self, path):
-        current_widget = self.stacked_widget.currentWidget()
-        current_widget.file.save_to_file(path)
+    def save_to_file(self, include_indentation):
+        path = QtWidgets.QFileDialog.getSaveFileName(self, "Save As", "", "JSON (*.json)")
+        if len(path[0]) > 0:
+            current_widget = self.stacked_widget.currentWidget()
+            current_widget.file.save_to_file(path[0], include_indentation)
 
     def on_tab_bar_clicked(self, tab_index):
-        # Add a new tab is last tab is clicked.
+        # Add a new tab if last tab is clicked.
         if tab_index == self.tab_bar.count() - 1:
             self.new_tab()
 

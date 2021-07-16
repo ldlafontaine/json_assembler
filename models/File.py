@@ -44,6 +44,9 @@ class File:
         else:
             return ""
 
-    def save_to_file(self, path):
+    def save_to_file(self, path, include_indentation):
         with io.open(path, 'w', encoding='utf-8') as f:
-            f.write(json.dumps(self.elements, ensure_ascii=False))
+            if include_indentation:
+                f.write(json.dumps(self.elements, ensure_ascii=False, indent=4))
+            else:
+                f.write(json.dumps(self.elements, ensure_ascii=False))

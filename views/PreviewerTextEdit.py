@@ -13,7 +13,7 @@ class PreviewerTextEdit(QtWidgets.QPlainTextEdit):
 
         self.update_line_number_area_width(0)
         self.setWordWrapMode(QtGui.QTextOption.NoWrap)
-        #self.setReadOnly(True)
+        self.setReadOnly(True)
         self.document().setDocumentMargin(8)
 
         self.file = File()
