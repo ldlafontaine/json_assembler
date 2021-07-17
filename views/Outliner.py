@@ -1,80 +1,53 @@
 from PySide2 import QtWidgets, QtCore
 
-from models import utils
+from OutlinerTreeWidget import OutlinerTreeWidget
 
 
-class Outliner(QtWidgets.QTreeWidget):
+class Outliner(QtWidgets.QWidget):
+
+    selection_activated = QtCore.Signal()
 
     def __init__(self, parent=None):
         super(Outliner, self).__init__(parent)
 
-        # Set styling.
-        self.setHeaderHidden(True)
+        self.create_widgets()
+        self.create_layout()
 
-        # Set behaviour.
-        self.setSelectionMode(self.ExtendedSelection)
+    def create_widgets(self):
+        self.stacked_widget = QtWidgets.QStackedWidget()
+        self.insert_tab(0)
 
-        # Create connections.
-        self.itemSelectionChanged.connect(self.on_item_selection_changed)
+    def create_layout(self):
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(self.stacked_widget)
 
-        # Create properties.
-        self.selection_is_being_propagated = False
-        self.callback_ids = []
-        self.callback_ids.append(utils.register_selection_changed_callback(self.refresh))
+    def insert_tab(self, index):
+        self.stacked_widget.insertWidget(index, OutlinerTreeWidget(self))
+        self.stacked_widget.setCurrentIndex(index)
 
-        self.populate()
+    def close_tab(self, index):
+        stacked_widget = self.stacked_widget.widget(index)
+        self.stacked_widget.removeWidget(stacked_widget)
 
-    def populate(self):
-        for node in utils.get_active_selection():
-            node_name = utils.get_node_name(node)
-            item = QtWidgets.QTreeWidgetItem([node_name])
-            item.setData(0, QtCore.Qt.UserRole, node)
+    def refresh(self, data):
+        current_stacked_widget = self.stacked_widget.currentWidget()
+        current_stacked_widget.refresh(data)
 
-            attributes = utils.get_attributes(node)
-            for attribute in attributes:
-                attribute_name = utils.get_attribute_name(attribute)
-                child_item = QtWidgets.QTreeWidgetItem([attribute_name])
-                child_item.setData(0, QtCore.Qt.UserRole, attribute)
-                item.addChild(child_item)
-
-            self.addTopLevelItem(item)
-
-    def refresh(self):
-        self.clear()
-        self.populate()
-
-    def search(self, term):
-        for item_index in range(self.topLevelItemCount()):
-            item = self.topLevelItem(item_index)
-            item_text = item.text(0)
-            hidden_count = 0
-            for child_index in range(item.childCount()):
-                child_item = item.child(child_index)
-                child_text = child_item.text(0)
-                if term.lower() not in (item_text + "." + child_text).lower():
-                    child_item.setHidden(True)
-                    hidden_count += 1
-                else:
-                    child_item.setHidden(False)
-            if hidden_count == item.childCount():
-                item.setHidden(True)
-            else:
-                item.setHidden(False)
-
-    def propagate_selection_to_children(self, item):
-        self.selection_is_being_propagated = True
-        selection_state = item.isSelected()
-        for child_index in range(item.childCount()):
-            child_item = item.child(child_index)
-            child_item.setSelected(selection_state)
-            if child_item.childCount() > 0:
-                self.propagate_selection_to_children(child_item)
-        self.selection_is_being_propagated = False
-
-    def on_item_selection_changed(self):
-        if self.selection_is_being_propagated:
-            return
-        selected_items = self.selectedItems()
-        # Propagate selection to children.
+    def clear_selection(self):
+        self.blockSignals(True)
+        current_stacked_widget = self.stacked_widget.currentWidget()
+        selected_items = current_stacked_widget.selectedItems()
         for item in selected_items:
-            self.propagate_selection_to_children(item)
+            item.setSelected(False)
+        self.blockSignals(False)
+
+    def get_flattened_data_from_selected(self):
+        data = set()
+        current_stacked_widget = self.stacked_widget.currentWidget()
+        selected_items = current_stacked_widget.selectedItems()
+        for item in selected_items:
+            item_data = item.data(0, QtCore.Qt.UserRole)
+            data.add(item_data)
+        return data

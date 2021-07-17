@@ -3,6 +3,7 @@ from shiboken2 import wrapInstance
 import maya.OpenMayaUI as omui
 
 from views.Outliner import Outliner
+from views.Explorer import Explorer
 from views.Previewer import Previewer
 from models import utils
 
@@ -38,7 +39,7 @@ class MainDialog(QtWidgets.QDialog):
         self.show_hidden_action = self.create_filter_action("Show Hidden", False)
 
         self.command_menu = self.menu_bar.addMenu("Command")
-        self.new_tab_action = QtWidgets.QAction("New Tab", self)
+        self.add_tab_action = QtWidgets.QAction("New Tab", self)
         self.rename_tab_action = QtWidgets.QAction("Rename Tab", self)
         self.close_tab_action = QtWidgets.QAction("Close Tab", self)
         self.close_all_tabs_action = QtWidgets.QAction("Close All Tabs", self)
@@ -50,14 +51,25 @@ class MainDialog(QtWidgets.QDialog):
         self.add_button = self.create_tool_bar_button(":nodeGrapherAddNodes.png")
         self.remove_button = self.create_tool_bar_button(":nodeGrapherRemoveNodes.png")
 
+        label_font = QtGui.QFont()
+        label_font.setBold(True)
+        label_font.setPointSize(8)
+        label_font.setCapitalization(QtGui.QFont.AllUppercase)
+
+        self.explorer_label = QtWidgets.QLabel("Explorer")
+        self.explorer_label.setFont(label_font)
         self.search_bar = QtWidgets.QLineEdit()
         self.search_bar.setPlaceholderText("Search...")
+        self.explorer = Explorer(self)
+        self.explorer.setMinimumWidth(200)
 
+        self.outliner_label = QtWidgets.QLabel("Outliner")
+        self.outliner_label.setFont(label_font)
         self.outliner = Outliner(self)
-        self.outliner.setMinimumWidth(200)
+        self.outliner.setMinimumHeight(350)
 
         self.previewer = Previewer()
-        self.previewer.setMinimumWidth(600)
+        self.previewer.setMinimumWidth(800)
 
     def create_layouts(self):
         self.file_menu.addAction(self.save_action)
@@ -67,7 +79,7 @@ class MainDialog(QtWidgets.QDialog):
         self.display_menu.addAction(self.show_connected_only_action)
         self.display_menu.addAction(self.show_hidden_action)
 
-        self.command_menu.addAction(self.new_tab_action)
+        self.command_menu.addAction(self.add_tab_action)
         self.command_menu.addAction(self.rename_tab_action)
         self.command_menu.addAction(self.close_tab_action)
         self.command_menu.addAction(self.close_all_tabs_action)
@@ -82,7 +94,10 @@ class MainDialog(QtWidgets.QDialog):
         tool_bar_layout.setSpacing(0)
 
         outliner_layout = QtWidgets.QVBoxLayout()
+        outliner_layout.addWidget(self.explorer_label)
         outliner_layout.addWidget(self.search_bar)
+        outliner_layout.addWidget(self.explorer)
+        outliner_layout.addWidget(self.outliner_label)
         outliner_layout.addWidget(self.outliner)
 
         previewer_layout = QtWidgets.QVBoxLayout()
@@ -98,7 +113,7 @@ class MainDialog(QtWidgets.QDialog):
         main_layout.addLayout(tool_bar_layout)
         main_layout.addLayout(bottom_layout)
 
-        self.setMinimumHeight(550)
+        self.setMinimumHeight(600)
 
     def create_connections(self):
         self.finished.connect(self.on_finished)
@@ -108,10 +123,16 @@ class MainDialog(QtWidgets.QDialog):
         self.add_button.clicked.connect(self.on_add_button_clicked)
         self.remove_button.clicked.connect(self.on_remove_button_clicked)
         self.save_action.triggered.connect(self.save_to_file)
-        self.new_tab_action.triggered.connect(self.previewer.new_tab)
+        self.add_tab_action.triggered.connect(self.previewer.add_tab)
         self.rename_tab_action.triggered.connect(self.previewer.rename_current_tab)
         self.close_tab_action.triggered.connect(self.previewer.close_current_tab)
         self.close_all_tabs_action.triggered.connect(self.previewer.close_all_tabs)
+        self.previewer.refreshed.connect(self.outliner.refresh)
+        self.previewer.tab_changed.connect(self.outliner.stacked_widget.setCurrentIndex)
+        self.previewer.tab_added.connect(self.outliner.insert_tab)
+        self.previewer.tab_closed.connect(self.outliner.close_tab)
+        self.explorer.selection_activated.connect(self.outliner.clear_selection)
+        self.outliner.selection_activated.connect(self.explorer.clear_selection)
 
     def create_filter_action(self, label, default_state):
         action = QtWidgets.QAction(label, self)
@@ -131,15 +152,17 @@ class MainDialog(QtWidgets.QDialog):
 
     def on_search_bar_text_edited(self):
         text = self.search_bar.text()
-        self.outliner.search(text)
+        self.explorer.search(text)
 
     def on_add_button_clicked(self):
-        items = self.outliner.selectedItems()
-        self.previewer.add_to_active_widget(items)
+        data = self.explorer.get_data_from_selected()
+        self.previewer.add_to_active_widget(data)
 
     def on_remove_button_clicked(self):
-        items = self.outliner.selectedItems()
-        self.previewer.remove_from_active_widget(items)
+        explorer_data = self.explorer.get_flattened_data_from_selected()
+        outliner_data = self.outliner.get_flattened_data_from_selected()
+        self.previewer.remove_from_active_widget(explorer_data)
+        self.previewer.remove_from_active_widget(outliner_data)
 
     def on_finished(self, result):
-        utils.deregister_callbacks(self.outliner.callback_ids)
+        utils.deregister_callbacks(self.explorer.callback_ids)

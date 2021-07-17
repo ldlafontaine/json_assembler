@@ -90,14 +90,11 @@ class PreviewerTextEdit(QtWidgets.QPlainTextEdit):
     def refresh(self):
         self.setPlainText(self.file.get_formatted_text())
 
-    def add_element(self, data):
-        self.file.add_element(data)
-        self.refresh()
+    def add_data(self, data):
+        self.file.add_data(data)
 
-    def remove_element(self, data):
-        self.file.remove_element(data)
-        self.refresh()
+    def remove_data(self, data):
+        self.file.remove_data(data)
 
-    def clear_elements(self):
-        self.file.clear_elements()
-        self.refresh()
+    def clear_data(self):
+        self.file.clear_data()
