@@ -10,7 +10,27 @@ class Node:
             raise TypeError
         self.object = maya_object
         self.name = self.get_node_name(self.object)
-        self.attributes = set()
+
+    def get_icon_path(self):
+        dg_node_fn = om.MFnDependencyNode(self.object)
+        if self.object.hasFn(om.MFn.kMesh):
+            return ":mesh.svg"
+        elif self.object.hasFn(om.MFn.kCamera):
+            return ":camera.svg"
+        elif self.object.hasFn(om.MFn.kNurbsCurve):
+            return ":nurbsCurve.svg"
+        elif self.object.hasFn(om.MFn.kNurbsSurface):
+            return ":nurbsSurface.svg"
+        elif self.object.hasFn(om.MFn.kJoint):
+            return ":joint.svg"
+        elif self.object.hasFn(om.MFn.kLocator):
+            return ":locator.svg"
+        elif self.object.hasFn(om.MFn.kSet):
+            return ":objectSet.svg"
+        elif self.object.hasFn(om.MFn.kTransform):
+            return ":transform.svg"
+        else:
+            return ":dagNode.svg"
 
     @staticmethod
     def get_node_name(node):

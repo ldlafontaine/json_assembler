@@ -19,6 +19,16 @@ class Attribute:
     def node(self):
         return self.plug.node()
 
+    def is_non_keyable(self):
+        return not self.plug.isKeyable()
+
+    def is_connected(self):
+        return self.plug.isConnected()
+
+    def is_hidden(self):
+        attribute_fn = om.MFnAttribute(self.attribute_object)
+        return attribute_fn.isHidden()
+
     def get_value(self):
         return self.get_attribute_value(self.plug, self.attribute_object)
 

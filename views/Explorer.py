@@ -22,7 +22,10 @@ class Explorer(QtWidgets.QTreeWidget):
         self.itemSelectionChanged.connect(self.on_item_selection_changed)
 
         # Create properties.
-        self.selection_is_being_propagated = False
+        self.show_non_keyable_enabled = True
+        self.show_connected_only_enabled = False
+        self.show_hidden_enabled = False
+        self.expanded_items = []
         self.callback_ids = []
         self.callback_ids.append(utils.register_selection_changed_callback(self.refresh))
 
@@ -32,16 +35,43 @@ class Explorer(QtWidgets.QTreeWidget):
         for node in utils.get_active_selection():
             item = QtWidgets.QTreeWidgetItem([node.name])
             item.setData(0, QtCore.Qt.UserRole, node)
+            self.addTopLevelItem(item)
 
             attributes = node.get_all_attributes()
             for attribute in attributes:
+                if not self.check_filters(attribute):
+                    continue
                 child_item = QtWidgets.QTreeWidgetItem([attribute.name])
                 child_item.setData(0, QtCore.Qt.UserRole, attribute)
                 item.addChild(child_item)
 
-            self.addTopLevelItem(item)
+            # Expand item if expanded at the time of refresh.
+            if node in self.expanded_items:
+                item.setExpanded(True)
+
+    def check_filters(self, data):
+        if isinstance(data, Attribute):
+            if self.show_connected_only_enabled and not data.is_connected():
+                return False
+            elif not self.show_non_keyable_enabled and not data.is_non_keyable():
+                return False
+            elif not self.show_hidden_enabled and data.is_hidden():
+                return False
+            else:
+                return True
+        else:
+            return True
 
     def refresh(self):
+        # Store which top level items are expanded in order to preserve the current layout.
+        self.expanded_items = []
+        for item_index in range(self.topLevelItemCount()):
+            item = self.topLevelItem(item_index)
+            if item.isExpanded():
+                item_data = item.data(0, QtCore.Qt.UserRole)
+                self.expanded_items.append(item_data)
+
+        # Clear and repopulate the widget.
         self.clear()
         self.populate()
 
@@ -107,6 +137,18 @@ class Explorer(QtWidgets.QTreeWidget):
             child_item.setSelected(selection_state)
             self.propagate_selection_to_children(child_item)
             child_index += 1
+
+    def set_show_non_keyable_enabled(self, state):
+        self.show_non_keyable_enabled = state
+        self.refresh()
+
+    def set_show_connected_only_enabled(self, state):
+        self.show_connected_only_enabled = state
+        self.refresh()
+
+    def set_show_hidden_enabled(self, state):
+        self.show_hidden_enabled = state
+        self.refresh()
 
     def on_item_selection_changed(self):
         self.blockSignals(True)

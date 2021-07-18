@@ -1,4 +1,4 @@
-from PySide2 import QtWidgets, QtCore
+from PySide2 import QtWidgets, QtCore, QtGui
 
 from models.Attribute import Attribute
 from models.Node import Node
@@ -12,6 +12,7 @@ class OutlinerTreeWidget(QtWidgets.QTreeWidget):
 
         # Set styling.
         self.setHeaderHidden(True)
+        self.setStyleSheet("QTreeWidget::item { margin: 1 }")
 
         # Set behaviour.
         self.setSelectionMode(self.ExtendedSelection)
@@ -20,7 +21,6 @@ class OutlinerTreeWidget(QtWidgets.QTreeWidget):
         self.itemSelectionChanged.connect(self.on_item_selection_changed)
 
         # Create properties.
-        self.selection_is_being_propagated = False
         self.outliner = outliner
         self.expanded_items = []
 
@@ -31,11 +31,9 @@ class OutlinerTreeWidget(QtWidgets.QTreeWidget):
                 continue
             item = QtWidgets.QTreeWidgetItem([data_element.name])
             item.setData(0, QtCore.Qt.UserRole, data_element)
+            item_icon = data_element.get_icon_path()
+            item.setIcon(0, QtGui.QIcon(item_icon))
             self.addTopLevelItem(item)
-
-            # Expand any previously expanded items.
-            if data_element in self.expanded_items:
-                item.setExpanded(True)
 
             # Create child items.
             for child_data in sorted(data[data_element]):
@@ -44,6 +42,10 @@ class OutlinerTreeWidget(QtWidgets.QTreeWidget):
                 child_item = QtWidgets.QTreeWidgetItem([child_data.name])
                 child_item.setData(0, QtCore.Qt.UserRole, child_data)
                 item.addChild(child_item)
+
+            # Expand item if expanded at the time of refresh
+            if data_element in self.expanded_items:
+                item.setExpanded(True)
 
     def refresh(self, data):
         # Store which top level items are expanded in order to preserve the current layout.

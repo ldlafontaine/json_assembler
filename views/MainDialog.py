@@ -117,8 +117,12 @@ class MainDialog(QtWidgets.QDialog):
 
     def create_connections(self):
         self.finished.connect(self.on_finished)
-        self.search_bar.textEdited.connect(self.on_search_bar_text_edited)
+
         self.save_button.clicked.connect(self.save_to_file)
+        self.show_non_keyable_action.triggered.connect(self.explorer.set_show_non_keyable_enabled)
+        self.show_connected_only_action.triggered.connect(self.explorer.set_show_connected_only_enabled)
+        self.show_hidden_action.triggered.connect(self.explorer.set_show_hidden_enabled)
+
         self.clear_button.clicked.connect(self.previewer.clear_active_widget)
         self.add_button.clicked.connect(self.on_add_button_clicked)
         self.remove_button.clicked.connect(self.on_remove_button_clicked)
@@ -127,6 +131,8 @@ class MainDialog(QtWidgets.QDialog):
         self.rename_tab_action.triggered.connect(self.previewer.rename_current_tab)
         self.close_tab_action.triggered.connect(self.previewer.close_current_tab)
         self.close_all_tabs_action.triggered.connect(self.previewer.close_all_tabs)
+
+        self.search_bar.textEdited.connect(self.on_search_bar_text_edited)
         self.previewer.refreshed.connect(self.outliner.refresh)
         self.previewer.tab_changed.connect(self.outliner.stacked_widget.setCurrentIndex)
         self.previewer.tab_added.connect(self.outliner.insert_tab)
