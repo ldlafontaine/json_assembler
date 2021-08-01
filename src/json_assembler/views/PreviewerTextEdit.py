@@ -1,7 +1,6 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 
 from PreviewerLineNumber import PreviewerLineNumber
-from models.File import File
 
 
 class PreviewerTextEdit(QtWidgets.QPlainTextEdit):
@@ -15,8 +14,6 @@ class PreviewerTextEdit(QtWidgets.QPlainTextEdit):
         self.setWordWrapMode(QtGui.QTextOption.NoWrap)
         self.setReadOnly(True)
         self.document().setDocumentMargin(8)
-
-        self.file = File()
 
     def create_widgets(self):
         self.line_number_area = PreviewerLineNumber(self)
@@ -87,14 +84,5 @@ class PreviewerTextEdit(QtWidgets.QPlainTextEdit):
             bottom = top + self.blockBoundingRect(block).height()
             block_number += 1
 
-    def refresh(self):
-        self.setPlainText(self.file.get_formatted_text())
-
-    def add_data(self, data):
-        self.file.add_data(data)
-
-    def remove_data(self, data):
-        self.file.remove_data(data)
-
-    def clear_data(self):
-        self.file.clear_data()
+    def refresh(self, text):
+        self.setPlainText(text)

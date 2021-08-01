@@ -1,6 +1,5 @@
 import maya.OpenMaya as om
 
-from Attribute import Attribute
 from Node import Node
 
 

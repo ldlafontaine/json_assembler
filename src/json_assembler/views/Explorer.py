@@ -1,8 +1,9 @@
-from PySide2 import QtWidgets, QtCore
+from PySide2 import QtWidgets, QtCore, QtGui
 
-from models.Attribute import Attribute
-from models.Node import Node
-from models import utils
+from ..models.Attribute import Attribute
+from ..models.Node import Node
+from ..models.Entry import Entry
+from ..models import utils
 
 
 class Explorer(QtWidgets.QTreeWidget):
@@ -12,11 +13,9 @@ class Explorer(QtWidgets.QTreeWidget):
     def __init__(self, parent=None):
         super(Explorer, self).__init__(parent)
 
-        # Set styling.
-        self.setHeaderHidden(True)
-
-        # Set behaviour.
+        # Set behaviour and styling.
         self.setSelectionMode(self.ExtendedSelection)
+        self.setHeaderHidden(True)
 
         # Create connections.
         self.itemSelectionChanged.connect(self.on_item_selection_changed)
@@ -28,12 +27,18 @@ class Explorer(QtWidgets.QTreeWidget):
         self.expanded_items = []
         self.callback_ids = []
         self.callback_ids.append(utils.register_selection_changed_callback(self.refresh))
+        self.search_term = ""
+        self.attribute_font = QtGui.QFont()
+        self.attribute_font.setPointSizeF(7.5)
 
         self.populate()
 
+    def sizeHint(self):
+        return QtCore.QSize(200, 200)
+
     def populate(self):
         for node in utils.get_active_selection():
-            item = QtWidgets.QTreeWidgetItem([node.name])
+            item = QtWidgets.QTreeWidgetItem([node.title])
             item.setData(0, QtCore.Qt.UserRole, node)
             self.addTopLevelItem(item)
 
@@ -41,13 +46,16 @@ class Explorer(QtWidgets.QTreeWidget):
             for attribute in attributes:
                 if not self.check_filters(attribute):
                     continue
-                child_item = QtWidgets.QTreeWidgetItem([attribute.name])
+                child_item = QtWidgets.QTreeWidgetItem([attribute.title])
                 child_item.setData(0, QtCore.Qt.UserRole, attribute)
+                child_item.setFont(0, self.attribute_font)
                 item.addChild(child_item)
 
             # Expand item if expanded at the time of refresh.
             if node in self.expanded_items:
                 item.setExpanded(True)
+
+        self.search(self.search_term)
 
     def check_filters(self, data):
         if isinstance(data, Attribute):
@@ -75,14 +83,8 @@ class Explorer(QtWidgets.QTreeWidget):
         self.clear()
         self.populate()
 
-    def clear_selection(self):
-        self.blockSignals(True)
-        selected_items = self.selectedItems()
-        for item in selected_items:
-            item.setSelected(False)
-        self.blockSignals(False)
-
     def search(self, term):
+        self.search_term = term
         for item_index in range(self.topLevelItemCount()):
             item = self.topLevelItem(item_index)
             item_text = item.text(0)
@@ -100,32 +102,19 @@ class Explorer(QtWidgets.QTreeWidget):
             else:
                 item.setHidden(False)
 
-    def get_data_from_selected(self):
-        data = {}
-        selected_items = self.selectedItems()
-        for item in selected_items:
-            item_data = item.data(0, QtCore.Qt.UserRole)
-            if isinstance(item_data, Node) and item_data not in data:
-                data[item_data] = {}
-            elif isinstance(item_data, Attribute):
-                try:
-                    item_data_value = item_data.get_value()
-                except NotImplementedError:
-                    continue
-                except:
-                    continue
-                parent_data = item.parent().data(0, QtCore.Qt.UserRole)
-                if isinstance(parent_data, Node) and parent_data not in data:
-                    data[parent_data] = {}
-                data[parent_data][item_data] = item_data_value
-        return data
-
-    def get_flattened_data_from_selected(self):
+    def get_data_from_selected(self, parents=False):
         data = set()
         selected_items = self.selectedItems()
         for item in selected_items:
-            item_data = item.data(0, QtCore.Qt.UserRole)
-            data.add(item_data)
+            entry = item.data(0, QtCore.Qt.UserRole)
+            if isinstance(entry, Attribute):
+                parent_item = item.parent()
+                parent_entry = parent_item.data(0, QtCore.Qt.UserRole)
+                entry.parent = parent_entry
+                if parents is True and parent_entry not in data:
+                    data.add(parent_entry)
+            data.add(entry)
+
         return data
 
     def propagate_selection_to_children(self, item):

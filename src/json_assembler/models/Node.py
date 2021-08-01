@@ -1,36 +1,39 @@
 import maya.OpenMaya as om
 
 from Attribute import Attribute
+from Entry import Entry
 
 
-class Node:
+class Node(Entry):
 
     def __init__(self, maya_object):
-        if type(maya_object) != om.MObject:
-            raise TypeError
-        self.object = maya_object
-        self.name = self.get_node_name(self.object)
+        self.maya_object = maya_object
+        self.node_name = self.get_node_name(self.maya_object)
+        super(Node, self).__init__(self.node_name)
 
     def get_icon_path(self):
-        dg_node_fn = om.MFnDependencyNode(self.object)
-        if self.object.hasFn(om.MFn.kMesh):
+        if self.maya_object.hasFn(om.MFn.kMesh):
             return ":mesh.svg"
-        elif self.object.hasFn(om.MFn.kCamera):
-            return ":camera.svg"
-        elif self.object.hasFn(om.MFn.kNurbsCurve):
-            return ":nurbsCurve.svg"
-        elif self.object.hasFn(om.MFn.kNurbsSurface):
-            return ":nurbsSurface.svg"
-        elif self.object.hasFn(om.MFn.kJoint):
-            return ":joint.svg"
-        elif self.object.hasFn(om.MFn.kLocator):
+        elif self.maya_object.hasFn(om.MFn.kLocator):
             return ":locator.svg"
-        elif self.object.hasFn(om.MFn.kSet):
+        elif self.maya_object.hasFn(om.MFn.kNurbsCurve):
+            return ":nurbsCurve.svg"
+        elif self.maya_object.hasFn(om.MFn.kNurbsSurface):
+            return ":nurbsSurface.svg"
+        elif self.maya_object.hasFn(om.MFn.kJoint):
+            return ":joint.svg"
+        elif self.maya_object.hasFn(om.MFn.kLight):
+            return ":pointLight.svg"
+        elif self.maya_object.hasFn(om.MFn.kLambert):
+            return ":lambert.svg"
+        elif self.maya_object.hasFn(om.MFn.kCamera):
+            return ":camera.svg"
+        elif self.maya_object.hasFn(om.MFn.kSet):
             return ":objectSet.svg"
-        elif self.object.hasFn(om.MFn.kTransform):
+        elif self.maya_object.hasFn(om.MFn.kTransform):
             return ":transform.svg"
         else:
-            return ":dagNode.svg"
+            return ":default.svg"
 
     @staticmethod
     def get_node_name(node):
@@ -40,7 +43,7 @@ class Node:
         return dg_node_fn.name()
 
     def get_all_attributes(self):
-        depend_fn = om.MFnDependencyNode(self.object)
+        depend_fn = om.MFnDependencyNode(self.maya_object)
         attribute_count = depend_fn.attributeCount()
         attributes = []
         for attribute_index in range(attribute_count):
@@ -51,7 +54,7 @@ class Node:
 
     def __eq__(self, other):
         if self.__class__ == other.__class__:
-            return self.object == other.object
+            return self.maya_object == other.maya_object
         else:
             return False
 
@@ -59,4 +62,4 @@ class Node:
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(self.object)
+        return hash(self.maya_object)

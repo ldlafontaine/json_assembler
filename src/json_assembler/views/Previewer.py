@@ -1,11 +1,10 @@
-from PySide2 import QtWidgets, QtCore, QtGui
+from PySide2 import QtWidgets, QtCore
 
-from views.PreviewerTextEdit import PreviewerTextEdit
+from PreviewerTextEdit import PreviewerTextEdit
 
 
 class Previewer(QtWidgets.QWidget):
 
-    refreshed = QtCore.Signal(dict)
     tab_changed = QtCore.Signal(int)
     tab_added = QtCore.Signal(int)
     tab_closed = QtCore.Signal(int)
@@ -16,6 +15,9 @@ class Previewer(QtWidgets.QWidget):
         self.create_widgets()
         self.create_layout()
         self.create_connections()
+
+        self.include_indentation = True
+        self.indentation_size = 4
 
         self.add_tab()
 
@@ -42,6 +44,9 @@ class Previewer(QtWidgets.QWidget):
         self.tab_bar.tabBarClicked.connect(self.on_tab_bar_clicked)
         self.tab_bar.currentChanged.connect(self.on_current_changed)
 
+    def sizeHint(self):
+        return QtCore.QSize(800, 550)
+
     def add_tab(self):
         count = self.tab_bar.count()
         index = count - 1 if count > 0 else 0
@@ -65,7 +70,7 @@ class Previewer(QtWidgets.QWidget):
         return label
 
     def close_tab(self, index):
-        # Prevent new tab button from being deleted..
+        # Prevent new tab button from being deleted.
         count = self.tab_bar.count()
         if index == count - 1:
             return
@@ -98,22 +103,19 @@ class Previewer(QtWidgets.QWidget):
         current_index = self.tab_bar.currentIndex()
         self.rename_tab(current_index)
 
-    def add_to_active_widget(self, data):
-        self.stacked_widget.currentWidget().add_data(data)
+    def set_include_indentation(self, include_indentation):
+        self.include_indentation = include_indentation
         self.refresh()
 
-    def remove_from_active_widget(self, data):
-        self.stacked_widget.currentWidget().remove_data(data)
-        self.refresh()
-
-    def clear_active_widget(self):
-        self.stacked_widget.currentWidget().clear_data()
+    def set_indentation_size(self, indentation_size):
+        self.indentation_size = indentation_size
         self.refresh()
 
     def refresh(self):
+        active_file = self.parent().get_active_file()
+        text = active_file.get_formatted_text(self.include_indentation, self.indentation_size)
         current_widget = self.stacked_widget.currentWidget()
-        current_widget.refresh()
-        self.refreshed.emit(current_widget.file.data)
+        current_widget.refresh(text)
 
     def save_to_file(self, include_indentation):
         path = QtWidgets.QFileDialog.getSaveFileName(self, "Save As", "", "JSON (*.json)")
@@ -132,3 +134,4 @@ class Previewer(QtWidgets.QWidget):
         self.tab_bar.setCurrentIndex(index)
         self.stacked_widget.setCurrentIndex(index)
         self.tab_changed.emit(index)
+        self.refresh()

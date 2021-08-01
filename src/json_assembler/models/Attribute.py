@@ -1,14 +1,26 @@
 import maya.OpenMaya as om
+import sys
+
+from Entry import Entry
 
 
-class Attribute:
+class Attribute(Entry):
 
     def __init__(self, plug, attribute_object):
-        if type(plug) != om.MPlug or type(attribute_object) != om.MObject:
-            raise TypeError
         self.plug = plug
+        self.attribute_name = self.get_attribute_name()
         self.attribute_object = attribute_object
-        self.name = self.get_attribute_name()
+        self.node_object = plug.node()
+        super(Attribute, self).__init__(self.attribute_name)
+
+        try:
+            self.value = self.get_value()
+        except:
+            # self.value = "ERROR"
+            self.value = str(sys.exc_info())
+
+    def get_icon_path(self):
+        return ":default.svg"
 
     def get_attribute_name(self):
         return self.plug.partialName(False, False, False, False, False, True)
@@ -35,7 +47,8 @@ class Attribute:
     @staticmethod
     def get_attribute_value(plug, attribute_object):
         plug_type = attribute_object.apiTypeStr()
-        attribute_fn = om.MFnAttribute(attribute_object)
+
+        # attribute_fn = om.MFnAttribute(attribute_object)
         # print(attribute_fn.name() + " has a plug type of " + plug_type + ".")
 
         if attribute_object.hasFn(om.MFn.kCompoundAttribute) or plug.isCompound():
@@ -89,7 +102,7 @@ class Attribute:
             child_node = plug.node()
             child_plug = om.MPlug(child_node, child_attribute_object)
             child_attribute = Attribute(child_plug, child_attribute_object)
-            child_attribute_name = child_attribute.name
+            child_attribute_name = child_attribute.attribute_name
             child_attribute_value = child_attribute.get_value()
             value[child_attribute_name] = child_attribute_value
         return value
@@ -152,7 +165,6 @@ class Attribute:
 
     def __eq__(self, other):
         if self.__class__ == other.__class__:
-            print "Comparing " + self.name + " with " + other.name + ": " + str(self.attribute_object == other.attribute_object)
             return self.attribute_object == other.attribute_object
         else:
             return False
