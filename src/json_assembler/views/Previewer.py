@@ -53,8 +53,8 @@ class Previewer(QtWidgets.QWidget):
         label = self.get_default_tab_label()
         self.tab_bar.insertTab(index, label)
         self.stacked_widget.insertWidget(index, PreviewerTextEdit())
-        self.tab_bar.setCurrentIndex(index)
         self.tab_added.emit(index)
+        self.tab_bar.setCurrentIndex(index)
         return index
 
     def get_default_tab_label(self):
@@ -131,7 +131,7 @@ class Previewer(QtWidgets.QWidget):
     def on_current_changed(self, index):
         if index == self.tab_bar.count() - 1:
             index -= 1
+        self.tab_changed.emit(index)
         self.tab_bar.setCurrentIndex(index)
         self.stacked_widget.setCurrentIndex(index)
-        self.tab_changed.emit(index)
         self.refresh()

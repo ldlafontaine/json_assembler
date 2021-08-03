@@ -23,6 +23,13 @@ class File:
     def clear_entries(self):
         self.entries = set()
 
+    def get_children(self, entry):
+        children = []
+        for child_entry in [x for x in self.entries if x.parent == entry]:
+            children.append(child_entry)
+            children.extend(self.get_children(child_entry))
+        return children
+
     def encode_data(self):
         entry_groups = OrderedDict()
         for item in sorted(self.entries, key=lambda x: x.position):

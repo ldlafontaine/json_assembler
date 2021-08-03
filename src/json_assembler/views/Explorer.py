@@ -20,7 +20,7 @@ class Explorer(QtWidgets.QTreeWidget):
         # Create connections.
         self.itemSelectionChanged.connect(self.on_item_selection_changed)
 
-        # Create properties.
+        # Create attributes.
         self.show_non_keyable_enabled = True
         self.show_connected_only_enabled = False
         self.show_hidden_enabled = False

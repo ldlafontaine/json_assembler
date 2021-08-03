@@ -22,15 +22,10 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
 
         # Create connections.
         self.selectionModel().selectionChanged.connect(self.on_selection_changed)
-        self.expanded.connect(self.on_expanded)
-        self.collapsed.connect(self.on_collapsed)
 
-        # Create properties.
+        # Create attributes.
         self.outliner = outliner
         self.file = File()
-        self.expanded_entries = set()
-        self.selected_entries = set()
-
         self.items_by_entry = {}
 
     def create_item(self, entry):
@@ -42,21 +37,6 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
         self.items_by_entry[entry] = item
         return item
 
-    def insert_item(self, item):
-        entry = self.item.data()
-        if entry.parent in self.items_by_entry:
-            parent_widget = self.items_by_entry[entry.parent]
-            parent_widget.setChild(entry.position, item)
-        else:
-            self.model().insertRow(entry.position, item)
-
-        index = self.model().indexFromItem(item)
-        if entry in self.selected_entries:
-            self.selectionModel().select(index, QtCore.QItemSelectionModel.Select)
-        if entry in self.expanded_entries:
-            index = self.model().indexFromItem(item)
-            self.setExpanded(index, True)
-
     def append_item(self, item):
         entry = item.data()
         if entry.parent in self.items_by_entry:
@@ -66,20 +46,6 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
         else:
             entry.position = self.model().rowCount(self.rootIndex())
             self.model().appendRow(item)
-
-    def refresh(self):
-        # Clear the tree view.
-        self.model().clear()
-
-        # Repopulate the tree view.
-        items = []
-        for entry in self.file.entries:
-            items.append(self.create_item(entry))
-        for item in items:
-            self.insert_item(item)
-
-        # Emit signal to update connected widgets.
-        self.outliner.updated.emit()
 
     def add_entries(self, entries):
         # Validate data and create item widgets from entries.
@@ -105,17 +71,27 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             entry = item.data()
             internal_entries.add(entry)
 
+        # Get entries from external sources such as selected items in other widgets.
         entries = internal_entries.union(external_entries)
-        for entry in entries:
-            if entry in self.items_by_entry:
-                # Remove entry from tree.
-                item = self.items_by_entry[entry]
-                index = self.model().indexFromItem(item)
-                self.model().removeRow(index.row(), index.parent())
-                del self.items_by_entry[entry]
 
-                # Remove entry from file.
-                self.file.remove_entry(entry)
+        # Get the children of each entry.
+        map(lambda x: entries.update(self.file.get_children(x)), internal_entries)
+        map(lambda x: entries.update(self.file.get_children(x)), external_entries)
+
+        # Remove entries and associated items.
+        for entry in entries:
+            # Remove entry.
+            self.file.remove_entry(entry)
+
+            # Remove associated item.
+            item = self.items_by_entry[entry]
+            parent = item.parent()
+            if not parent:
+                parent = self.model().invisibleRootItem()
+            parent.takeRow(item.index().row())
+
+            # Remove the entry from dictionary.
+            self.items_by_entry.pop(entry, None)
 
         self.outliner.updated.emit()
 
@@ -141,31 +117,13 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             child = parent.child(row)
             self.update_entry_position(child, row)
 
-    def on_expanded(self, index):
-        item = self.model().itemFromIndex(index)
-        data = item.data()
-        self.expanded_entries.add(data)
-
-    def on_collapsed(self, index):
-        item = self.model().itemFromIndex(index)
-        data = item.data()
-        self.expanded_entries.remove(data)
-
     def on_selection_changed(self, selected, deselected):
         if self.selectionModel().hasSelection():
             self.outliner.selection_activated.emit()
 
-        for index in selected.indexes():
-            item = self.model().itemFromIndex(index)
-            data = item.data()
-            self.selected_entries.add(data)
-        for index in deselected.indexes():
-            item = self.model().itemFromIndex(index)
-            data = item.data()
-            self.selected_entries.remove(data)
-
     def on_move_up_button_pressed(self):
         selected_indexes = self.selectionModel().selectedIndexes()
+        selected_indexes.sort(key=lambda i: i.row())
         for index in selected_indexes:
             if index.row() <= 0:
                 continue
@@ -177,8 +135,7 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             parent.insertRow(index.row() - 1, row)
 
             # Select reinserted item.
-            destination_index = self.model().indexFromItem(item)
-            self.selectionModel().select(destination_index, QtCore.QItemSelectionModel.Select)
+            self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
 
             # Update model.
             self.update_entry_positions_by_parent(parent)
@@ -186,6 +143,7 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
 
     def on_move_down_button_pressed(self):
         selected_indexes = self.selectionModel().selectedIndexes()
+        selected_indexes.sort(key=lambda i: i.row(), reverse=True)
         for index in selected_indexes:
             item = self.model().itemFromIndex(index)
             parent = item.parent()
@@ -197,8 +155,7 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             parent.insertRow(index.row() + 1, row)
 
             # Select reinserted item.
-            destination_index = self.model().indexFromItem(item)
-            self.selectionModel().select(destination_index, QtCore.QItemSelectionModel.Select)
+            self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
 
             # Update model.
             self.update_entry_positions_by_parent(parent)
@@ -216,8 +173,7 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
                 grandparent = self.model().invisibleRootItem()
             row = parent.takeRow(index.row())
             grandparent.insertRow(index.parent().row(), row)
-            destination_index = self.model().indexFromItem(item)
-            self.selectionModel().select(destination_index, QtCore.QItemSelectionModel.Select)
+            self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
 
             # Update model.
             self.update_entry_parent(item, grandparent)
@@ -238,8 +194,7 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
                 return
             row = parent.takeRow(index.row())
             nearest_sibling_item.insertRow(0, row)
-            destination_index = self.model().indexFromItem(item)
-            self.selectionModel().select(destination_index, QtCore.QItemSelectionModel.Select)
+            self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
             self.setExpanded(index, True)
 
             # Update model.
