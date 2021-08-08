@@ -1,5 +1,6 @@
 from PySide2 import QtWidgets, QtCore, QtGui
 
+from ..models import maya_utilities
 from ..models.Entry import Entry
 from ..models.Attribute import Attribute
 from ..models.Node import Node
@@ -12,8 +13,10 @@ class PropertiesDialog(QtWidgets.QDialog):
 
         self.entry = entry
 
+        self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
+
         if self.entry:
-            self.setWindowTitle("Edit Entry")
+            self.setWindowTitle("Edit " + self.entry.title)
         else:
             self.setWindowTitle("Create New Entry")
 
@@ -54,7 +57,8 @@ class PropertiesDialog(QtWidgets.QDialog):
         self.number_value_label = QtWidgets.QLabel("Number:")
         self.number_value_label.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Maximum)
         self.number_value_field = QtWidgets.QLineEdit()
-        self.number_value_field.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp("\\d*\\.?\\d*"), self.number_value_field))
+        number_field_validator = QtGui.QRegExpValidator(QtCore.QRegExp("\\d*\\.?\\d*"), self.number_value_field)
+        self.number_value_field.setValidator(number_field_validator)
 
         self.boolean_widget = QtWidgets.QWidget()
         self.boolean_value_label = QtWidgets.QLabel("Boolean:")
@@ -119,7 +123,7 @@ class PropertiesDialog(QtWidgets.QDialog):
         self.cancel_button.clicked.connect(self.on_cancel_button_clicked)
         self.type_field.currentIndexChanged.connect(self.update_widget_visibility)
 
-    def sizeHint(self):
+    def sizeHint(*args, **kwargs):
         return QtCore.QSize(350, 175)
 
     def value_is_string(self, entry):
@@ -185,6 +189,12 @@ class PropertiesDialog(QtWidgets.QDialog):
             self.boolean_widget.setVisible(True)
 
     def on_accept_button_clicked(self):
+        # Perform validation.
+        if len(self.name_field.text()) <= 0:
+            maya_utilities.display_error("A valid name must be provided.")
+            return
+
+        # Apply changes.
         if not self.entry:
             self.entry = Entry(self.name_field.text())
         else:

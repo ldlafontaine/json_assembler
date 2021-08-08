@@ -27,3 +27,11 @@ def deregister_callbacks(callback_ids):
     message = om.MMessage()
     for callback_id in callback_ids:
         message.removeCallback(callback_id)
+
+
+def display_error(message):
+    om.MGlobal_displayError(message)
+
+
+def display_warning(message):
+    om.MGlobal_displayWarning(message)

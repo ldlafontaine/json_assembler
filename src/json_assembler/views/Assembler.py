@@ -5,7 +5,7 @@ import maya.OpenMayaUI as omui
 from Outliner import Outliner
 from Explorer import Explorer
 from Previewer import Previewer
-from ..models import utils
+from ..models import maya_utilities
 
 
 def get_maya_main_window():
@@ -19,6 +19,9 @@ class Assembler(QtWidgets.QDialog):
         super(Assembler, self).__init__(parent)
 
         self.setWindowTitle('JSON Assembler')
+        self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowMinimizeButtonHint)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowMaximizeButtonHint)
 
         self.create_widgets()
         self.create_layouts()
@@ -48,18 +51,23 @@ class Assembler(QtWidgets.QDialog):
         self.left_tool_bar.setStyleSheet("QToolButton{background:transparent; border:0 }")
         self.save_button = QtWidgets.QToolButton()
         self.save_button.setIcon(QtGui.QIcon(":save.png"))
+        self.save_button.setStatusTip("Save the contents of the current tab to the designated file")
         self.clear_button = QtWidgets.QToolButton()
         self.clear_button.setIcon(QtGui.QIcon(":hsClearView.png"))
+        self.clear_button.setStatusTip("Clear all entries from the current tab")
         self.add_button = QtWidgets.QToolButton()
         self.add_button.setIcon(QtGui.QIcon(":nodeGrapherAddNodes.png"))
+        self.add_button.setStatusTip("Add the selected nodes")
         self.remove_button = QtWidgets.QToolButton()
         self.remove_button.setIcon(QtGui.QIcon(":nodeGrapherRemoveNodes.png"))
+        self.remove_button.setStatusTip("Remove the selected nodes")
 
         self.right_tool_bar = QtWidgets.QToolBar()
         self.right_tool_bar.setStyleSheet("QToolButton{background:transparent; border:0}"
                                           "QToolButton:on{background:rgb(82,133,166)}")
         self.include_indentation_button = QtWidgets.QToolButton()
         self.include_indentation_button.setIcon(QtGui.QIcon(":increaseDepth.png"))
+        self.include_indentation_button.setStatusTip("Toggle display indentation")
         self.include_indentation_button.setCheckable(True)
         self.include_indentation_button.setChecked(True)
         self.indentation_size_field = QtWidgets.QSpinBox()
@@ -67,22 +75,13 @@ class Assembler(QtWidgets.QDialog):
         self.indentation_size_field.setValue(4)
         self.indentation_size_field.setMinimumWidth(60)
         self.indentation_size_field.setMinimumHeight(24)
+        self.indentation_size_field.setStatusTip("Set indentation size")
 
-        label_font = QtGui.QFont()
-        label_font.setBold(True)
-        label_font.setPointSize(8)
-        label_font.setCapitalization(QtGui.QFont.AllUppercase)
-
-        self.explorer_label = QtWidgets.QLabel("Explorer")
-        self.explorer_label.setFont(label_font)
-        self.search_bar = QtWidgets.QLineEdit()
-        self.search_bar.setPlaceholderText("Search...")
+        self.left_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         self.explorer = Explorer(self)
-
-        self.outliner_label = QtWidgets.QLabel("Outliner")
-        self.outliner_label.setFont(label_font)
         self.outliner = Outliner(self)
-
+        self.middle_splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        self.middle_splitter.setChildrenCollapsible(False)
         self.previewer = Previewer(self)
 
     def create_layouts(self):
@@ -102,7 +101,6 @@ class Assembler(QtWidgets.QDialog):
         self.left_tool_bar.addWidget(self.clear_button)
         self.left_tool_bar.addWidget(self.add_button)
         self.left_tool_bar.addWidget(self.remove_button)
-        # self.left_tool_bar.addWidget(self.refresh_button)
 
         self.right_tool_bar.addWidget(self.include_indentation_button)
         self.right_tool_bar.addWidget(self.indentation_size_field)
@@ -112,25 +110,25 @@ class Assembler(QtWidgets.QDialog):
         tool_bar_layout.addStretch()
         tool_bar_layout.addWidget(self.right_tool_bar)
 
-        left_layout = QtWidgets.QVBoxLayout()
-        left_layout.addWidget(self.explorer_label)
-        left_layout.addWidget(self.search_bar)
-        left_layout.addWidget(self.explorer, 2)
-        left_layout.addWidget(self.outliner_label)
-        left_layout.addWidget(self.outliner, 5)
+        self.left_splitter.addWidget(self.explorer)
+        self.left_splitter.addWidget(self.outliner)
+        self.left_splitter.setStretchFactor(0, 2)
+        self.left_splitter.setStretchFactor(1, 3)
 
-        previewer_layout = QtWidgets.QVBoxLayout()
-        previewer_layout.addWidget(self.previewer)
+        self.middle_splitter.addWidget(self.left_splitter)
+        self.middle_splitter.addWidget(self.previewer)
+        self.middle_splitter.setStretchFactor(0, 1)
+        self.middle_splitter.setStretchFactor(1, 3)
 
         bottom_layout = QtWidgets.QHBoxLayout()
-        bottom_layout.addLayout(left_layout, 1)
-        bottom_layout.addLayout(previewer_layout, 3)
+        bottom_layout.addWidget(self.middle_splitter)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout = QtWidgets.QVBoxLayout()
         main_layout.setContentsMargins(11, 0, 11, 11)
         main_layout.setMenuBar(self.menu_bar)
         main_layout.addLayout(tool_bar_layout)
         main_layout.addLayout(bottom_layout)
+        self.setLayout(main_layout)
 
     def create_connections(self):
         self.finished.connect(self.on_finished)
@@ -153,12 +151,11 @@ class Assembler(QtWidgets.QDialog):
         self.close_tab_action.triggered.connect(self.previewer.close_current_tab)
         self.close_all_tabs_action.triggered.connect(self.previewer.close_all_tabs)
 
-        self.search_bar.textEdited.connect(self.on_search_bar_text_edited)
         self.previewer.tab_changed.connect(self.outliner.stacked_widget.setCurrentIndex)
         self.previewer.tab_added.connect(self.outliner.insert_tab)
         self.previewer.tab_closed.connect(self.outliner.close_tab)
         self.explorer.selection_activated.connect(self.outliner.clear_selection)
-        self.outliner.selection_activated.connect(self.explorer.clearSelection)
+        self.outliner.selection_activated.connect(self.explorer.tree_widget.clearSelection)
         self.outliner.updated.connect(self.previewer.refresh)
 
     def create_filter_action(self, label, default_state):
@@ -178,10 +175,6 @@ class Assembler(QtWidgets.QDialog):
             indentation_size = self.previewer.indentation_size
             self.get_active_file().save_to_file(path[0], include_indentation, indentation_size)
 
-    def on_search_bar_text_edited(self):
-        text = self.search_bar.text()
-        self.explorer.search(text)
-
     def on_add_button_clicked(self):
         data = self.explorer.get_data_from_selected(True)
         self.outliner.add_entries(data)
@@ -191,4 +184,4 @@ class Assembler(QtWidgets.QDialog):
         self.outliner.remove_entries(explorer_entries)
 
     def on_finished(self, result):
-        utils.deregister_callbacks(self.explorer.callback_ids)
+        maya_utilities.deregister_callbacks(self.explorer.callback_ids)

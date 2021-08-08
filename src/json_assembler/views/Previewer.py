@@ -16,9 +16,11 @@ class Previewer(QtWidgets.QWidget):
         self.create_layout()
         self.create_connections()
 
+        # Create attributes.
         self.include_indentation = True
         self.indentation_size = 4
 
+        # Create initial tab.
         self.add_tab()
 
     def create_widgets(self):
@@ -44,8 +46,8 @@ class Previewer(QtWidgets.QWidget):
         self.tab_bar.tabBarClicked.connect(self.on_tab_bar_clicked)
         self.tab_bar.currentChanged.connect(self.on_current_changed)
 
-    def sizeHint(self):
-        return QtCore.QSize(800, 550)
+    def sizeHint(*args, **kwargs):
+        return QtCore.QSize(750, 550)
 
     def add_tab(self):
         count = self.tab_bar.count()
@@ -111,8 +113,7 @@ class Previewer(QtWidgets.QWidget):
         self.indentation_size = indentation_size
         self.refresh()
 
-    def refresh(self):
-        active_file = self.parent().get_active_file()
+    def refresh(self, active_file):
         text = active_file.encode(self.include_indentation, self.indentation_size)
         current_widget = self.stacked_widget.currentWidget()
         current_widget.refresh(text)
@@ -128,4 +129,3 @@ class Previewer(QtWidgets.QWidget):
         self.tab_changed.emit(index)
         self.tab_bar.setCurrentIndex(index)
         self.stacked_widget.setCurrentIndex(index)
-        self.refresh()

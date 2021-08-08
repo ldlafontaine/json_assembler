@@ -1,9 +1,7 @@
 from PySide2 import QtWidgets, QtCore, QtGui
 
-from ..models.Entry import Entry
-from ..models.Attribute import Attribute
-from ..models.Node import Node
 from ..models.File import File
+from PropertiesDialog import PropertiesDialog
 
 
 class OutlinerTreeWidget(QtWidgets.QTreeView):
@@ -12,21 +10,41 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
         super(OutlinerTreeWidget, self).__init__(parent)
 
         self.setModel(QtGui.QStandardItemModel())
+        self.outliner = outliner
 
-        # Set styling.
+        self.create_widgets()
+        self.create_connections()
+
+        # Set behaviour and styling.
         self.setHeaderHidden(True)
         self.setStyleSheet("QTreeWidget::item { margin: 1 }")
-
-        # Set behaviour.
         self.setSelectionMode(self.ExtendedSelection)
-
-        # Create connections.
-        self.selectionModel().selectionChanged.connect(self.on_selection_changed)
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
         # Create attributes.
-        self.outliner = outliner
         self.file = File()
         self.items_by_entry = {}
+
+    def create_widgets(self):
+        self.context_menu = QtWidgets.QMenu(self)
+        self.edit_action = self.context_menu.addAction("Edit")
+        self.remove_action = self.context_menu.addAction("Remove")
+        self.context_menu.addSeparator()
+        self.move_up_action = self.context_menu.addAction("Move Up")
+        self.move_down_action = self.context_menu.addAction("Move Down")
+        self.move_left_action = self.context_menu.addAction("Move Left")
+        self.move_right_action = self.context_menu.addAction("Move Right")
+
+    def create_connections(self):
+        self.selectionModel().selectionChanged.connect(self.on_selection_changed)
+        self.customContextMenuRequested.connect(self.on_context_menu_requested)
+
+        self.edit_action.triggered.connect(self.edit_entry)
+        self.remove_action.triggered.connect(lambda: self.remove_entries(set()))
+        self.move_up_action.triggered.connect(self.move_up)
+        self.move_down_action.triggered.connect(self.move_down)
+        self.move_left_action.triggered.connect(self.move_left)
+        self.move_right_action.triggered.connect(self.move_right)
 
     def create_item(self, entry):
         item = QtGui.QStandardItem(entry.title)
@@ -60,7 +78,7 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             self.append_item(item)
             self.file.add_entry(entry)
 
-        self.outliner.updated.emit()
+        self.outliner.updated.emit(self.file)
 
     def remove_entries(self, external_entries):
         # Get entries from selected items.
@@ -93,13 +111,13 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             # Remove the entry from dictionary.
             self.items_by_entry.pop(entry, None)
 
-        self.outliner.updated.emit()
+        self.outliner.updated.emit(self.file)
 
     def clear_entries(self):
         self.file.clear_entries()
         self.model().clear()
         self.items_by_entry.clear()
-        self.outliner.updated.emit()
+        self.outliner.updated.emit(self.file)
 
     def update_entry_parent(self, item, parent):
         entry = item.data()
@@ -183,11 +201,25 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
         if nearest_sibling:
             return True
 
-    def on_selection_changed(self, selected, deselected):
-        if self.selectionModel().hasSelection():
-            self.outliner.selection_activated.emit()
+    def new_entry(self):
+        dialog = PropertiesDialog()
+        result = dialog.exec_()
+        if result == QtWidgets.QDialog.Accepted:
+            entries = [dialog.entry]
+            self.add_entries(entries)
 
-    def on_move_up_button_pressed(self):
+    def edit_entry(self):
+        index = self.selectionModel().currentIndex()
+        item = self.model().itemFromIndex(index)
+        entry = item.data()
+        dialog = PropertiesDialog(entry)
+        result = dialog.exec_()
+        if result == QtWidgets.QDialog.Accepted:
+            item.setData(dialog.entry)
+            item.setText(dialog.entry.title)
+            self.outliner.updated.emit(self.file)
+
+    def move_up(self):
         item_groups = self.get_selected_items_by_parent()
         for parent_index, item_group in item_groups.items():
 
@@ -209,9 +241,9 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             # Update item group entries.
             self.update_entry_positions_by_parent(parent)
 
-        self.outliner.updated.emit()
+        self.outliner.updated.emit(self.file)
 
-    def on_move_down_button_pressed(self):
+    def move_down(self):
         item_groups = self.get_selected_items_by_parent()
         for parent_index, item_group in item_groups.items():
 
@@ -233,9 +265,9 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             # Update item group entries.
             self.update_entry_positions_by_parent(parent)
 
-        self.outliner.updated.emit()
+        self.outliner.updated.emit(self.file)
 
-    def on_move_left_button_pressed(self):
+    def move_left(self):
         item_groups = self.get_selected_items_by_parent()
         for parent_index, item_group in item_groups.items():
 
@@ -262,9 +294,9 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             self.update_entry_positions_by_parent(parent)
             self.update_entry_positions_by_parent(grandparent)
 
-        self.outliner.updated.emit()
+        self.outliner.updated.emit(self.file)
 
-    def on_move_right_button_pressed(self):
+    def move_right(self):
         item_groups = self.get_selected_items_by_parent()
         for parent_index, item_group in item_groups.items():
 
@@ -292,4 +324,13 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             self.update_entry_positions_by_parent(parent)
             self.update_entry_positions_by_parent(nearest_sibling)
 
-        self.outliner.updated.emit()
+        self.outliner.updated.emit(self.file)
+
+    def on_selection_changed(self, selected, deselected):
+        if self.selectionModel().hasSelection():
+            self.outliner.selection_activated.emit()
+
+    def on_context_menu_requested(self, point):
+        selected_indexes = self.selectionModel().selectedIndexes()
+        if selected_indexes:
+            self.context_menu.popup(self.mapToGlobal(point))

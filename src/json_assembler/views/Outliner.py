@@ -1,12 +1,11 @@
 from PySide2 import QtWidgets, QtCore, QtGui
 
 from OutlinerTreeWidget import OutlinerTreeWidget
-from PropertiesDialog import PropertiesDialog
 
 
 class Outliner(QtWidgets.QWidget):
 
-    updated = QtCore.Signal()
+    updated = QtCore.Signal(object)
     selection_activated = QtCore.Signal()
 
     def __init__(self, parent=None):
@@ -17,28 +16,52 @@ class Outliner(QtWidgets.QWidget):
         self.create_connections()
 
         # Set behaviour and styling.
-        self.setMinimumWidth(200)
+        self.setMinimumWidth(225)
 
     def create_widgets(self):
+        label_font = QtGui.QFont()
+        label_font.setBold(True)
+        label_font.setPointSize(8)
+        label_font.setCapitalization(QtGui.QFont.AllUppercase)
+
+        self.title_label = QtWidgets.QLabel("Outliner")
+        self.title_label.setFont(label_font)
+
         self.stacked_widget = QtWidgets.QStackedWidget()
         self.insert_tab(0)
 
         self.left_tool_bar = QtWidgets.QToolBar()
-        self.left_tool_bar.setContentsMargins(0, 0, 0, 0)
-        self.new_button = self.create_tool_bar_button(":fileNew.png")
-        # self.group_button = self.create_tool_bar_button(":folder-new.png")
-        self.edit_button = self.create_tool_bar_button(":greasePencilPencil.png")
+        self.left_tool_bar.setStyleSheet("QToolButton{background:transparent; border:0 }")
+        self.new_button = QtWidgets.QToolButton()
+        self.new_button.setIcon(QtGui.QIcon(":fileNew.png"))
+        self.new_button.setStatusTip("Create new entry")
+        self.edit_button = QtWidgets.QToolButton()
+        self.edit_button.setIcon(QtGui.QIcon(":greasePencilPencil.png"))
+        self.edit_button.setStatusTip("Edit entry")
 
         self.right_tool_bar = QtWidgets.QToolBar()
-        self.right_tool_bar.setContentsMargins(0, 0, 0, 0)
-        self.move_up_button = self.create_tool_bar_button(":moveUVUp.png")
-        self.move_down_button = self.create_tool_bar_button(":moveUVDown.png")
-        self.move_left_button = self.create_tool_bar_button(":moveUVLeft.png")
-        self.move_right_button = self.create_tool_bar_button(":moveUVRight.png")
+        self.right_tool_bar.setStyleSheet("QToolButton{background:transparent; border:0 }")
+        self.move_up_button = QtWidgets.QToolButton()
+        self.move_up_button.setIcon(QtGui.QIcon(":moveUVUp.png"))
+        self.move_up_button.setStatusTip("Move entries up")
+        self.move_down_button = QtWidgets.QToolButton()
+        self.move_down_button.setIcon(QtGui.QIcon(":moveUVDown.png"))
+        self.move_down_button.setStatusTip("Move entries down")
+        self.move_left_button = QtWidgets.QToolButton()
+        self.move_left_button.setIcon(QtGui.QIcon(":moveUVLeft.png"))
+        self.move_left_button.setStatusTip("Move entries left")
+        self.move_right_button = QtWidgets.QToolButton()
+        self.move_right_button.setIcon(QtGui.QIcon(":moveUVRight.png"))
+        self.move_right_button.setStatusTip("Move entries right")
 
     def create_layout(self):
+        top_layout = QtWidgets.QVBoxLayout()
+        top_layout.setContentsMargins(0, 8, 0, 0)
+        top_layout.setSpacing(8)
+        top_layout.addWidget(self.title_label)
+        top_layout.addWidget(self.stacked_widget)
+
         self.left_tool_bar.addWidget(self.new_button)
-        # self.left_tool_bar.addWidget(self.group_button)
         self.left_tool_bar.addWidget(self.edit_button)
 
         self.right_tool_bar.addWidget(self.move_up_button)
@@ -50,30 +73,23 @@ class Outliner(QtWidgets.QWidget):
         tool_bar_layout.addWidget(self.left_tool_bar)
         tool_bar_layout.addStretch()
         tool_bar_layout.addWidget(self.right_tool_bar)
-        tool_bar_layout.setSpacing(0)
 
-        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout = QtWidgets.QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-        main_layout.addWidget(self.stacked_widget)
+        main_layout.addLayout(top_layout)
         main_layout.addLayout(tool_bar_layout)
+        self.setLayout(main_layout)
 
     def create_connections(self):
-        self.new_button.clicked.connect(self.on_new_button_pressed)
-        self.edit_button.clicked.connect(self.on_edit_button_pressed)
-        self.move_up_button.clicked.connect(self.on_move_up_button_pressed)
-        self.move_down_button.clicked.connect(self.on_move_down_button_pressed)
-        self.move_left_button.clicked.connect(self.on_move_left_button_pressed)
-        self.move_right_button.clicked.connect(self.on_move_right_button_pressed)
+        self.new_button.clicked.connect(lambda: self.stacked_widget.currentWidget().new_entry())
+        self.edit_button.clicked.connect(lambda: self.stacked_widget.currentWidget().edit_entry())
+        self.move_up_button.clicked.connect(lambda: self.stacked_widget.currentWidget().move_up())
+        self.move_down_button.clicked.connect(lambda: self.stacked_widget.currentWidget().move_down())
+        self.move_left_button.clicked.connect(lambda: self.stacked_widget.currentWidget().move_left())
+        self.move_right_button.clicked.connect(lambda: self.stacked_widget.currentWidget().move_right())
 
-    def create_tool_bar_button(self, image_path):
-        button = QtWidgets.QToolButton()
-        button.setIcon(QtGui.QIcon(image_path))
-        button.setStyleSheet("QToolButton{background:transparent; padding:0px; margin:0px }")
-        return button
-
-    def sizeHint(self):
-        return QtCore.QSize(200, 350)
+    def sizeHint(*args, **kwargs):
+        return QtCore.QSize(225, 325)
 
     def insert_tab(self, index):
         self.stacked_widget.insertWidget(index, OutlinerTreeWidget(self))
@@ -98,39 +114,3 @@ class Outliner(QtWidgets.QWidget):
     def clear_selection(self):
         current_stacked_widget = self.stacked_widget.currentWidget()
         current_stacked_widget.clearSelection()
-
-    def on_new_button_pressed(self):
-        dialog = PropertiesDialog()
-        result = dialog.exec_()
-        current_stacked_widget = self.stacked_widget.currentWidget()
-        if result == QtWidgets.QDialog.Accepted:
-            entries = [dialog.entry]
-            current_stacked_widget.add_entries(entries)
-
-    def on_edit_button_pressed(self):
-        current_stacked_widget = self.stacked_widget.currentWidget()
-        index = current_stacked_widget.selectionModel().currentIndex()
-        item = current_stacked_widget.model().itemFromIndex(index)
-        entry = item.data()
-        dialog = PropertiesDialog(entry)
-        result = dialog.exec_()
-        if result == QtWidgets.QDialog.Accepted:
-            item.setData(dialog.entry)
-            item.setText(dialog.entry.title)
-            self.updated.emit()
-
-    def on_move_up_button_pressed(self):
-        current_stacked_widget = self.stacked_widget.currentWidget()
-        current_stacked_widget.on_move_up_button_pressed()
-
-    def on_move_down_button_pressed(self):
-        current_stacked_widget = self.stacked_widget.currentWidget()
-        current_stacked_widget.on_move_down_button_pressed()
-
-    def on_move_left_button_pressed(self):
-        current_stacked_widget = self.stacked_widget.currentWidget()
-        current_stacked_widget.on_move_left_button_pressed()
-
-    def on_move_right_button_pressed(self):
-        current_stacked_widget = self.stacked_widget.currentWidget()
-        current_stacked_widget.on_move_right_button_pressed()
