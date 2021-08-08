@@ -9,7 +9,9 @@ class Node(Entry):
     def __init__(self, maya_object):
         self.maya_object = maya_object
         self.node_name = self.get_node_name(self.maya_object)
+        self.uuid = self.get_uuid()
         super(Node, self).__init__(self.node_name)
+        self.value = {}
 
     def get_icon_path(self):
         if self.maya_object.hasFn(om.MFn.kMesh):
@@ -42,6 +44,10 @@ class Node(Entry):
         dg_node_fn = om.MFnDependencyNode(node)
         return dg_node_fn.name()
 
+    def get_uuid(self):
+        dg_node_fn = om.MFnDependencyNode(self.maya_object)
+        return dg_node_fn.uuid().asString()
+
     def get_all_attributes(self):
         depend_fn = om.MFnDependencyNode(self.maya_object)
         attribute_count = depend_fn.attributeCount()
@@ -62,4 +68,4 @@ class Node(Entry):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(self.maya_object)
+        return hash(self.uuid)

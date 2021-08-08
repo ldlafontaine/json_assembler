@@ -28,8 +28,6 @@ class Explorer(QtWidgets.QTreeWidget):
         self.callback_ids = []
         self.callback_ids.append(utils.register_selection_changed_callback(self.refresh))
         self.search_term = ""
-        self.attribute_font = QtGui.QFont()
-        self.attribute_font.setPointSizeF(7.5)
 
         self.populate()
 
@@ -48,7 +46,6 @@ class Explorer(QtWidgets.QTreeWidget):
                     continue
                 child_item = QtWidgets.QTreeWidgetItem([attribute.title])
                 child_item.setData(0, QtCore.Qt.UserRole, attribute)
-                child_item.setFont(0, self.attribute_font)
                 item.addChild(child_item)
 
             # Expand item if expanded at the time of refresh.

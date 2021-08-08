@@ -21,8 +21,8 @@ class PropertiesDialog(QtWidgets.QDialog):
         self.create_layouts()
         self.create_connections()
 
-        self.update_widget_values()
-        self.update_widget_visibility(self.type_field.currentIndex())
+        self.initialize_widget_values()
+        self.initialize_widget_visibility()
 
     def create_widgets(self):
         self.name_label = QtWidgets.QLabel("Name:")
@@ -149,7 +149,7 @@ class PropertiesDialog(QtWidgets.QDialog):
             return True
         return False
 
-    def update_widget_values(self):
+    def initialize_widget_values(self):
         if self.entry:
             self.name_field.setText(self.entry.title)
 
@@ -169,6 +169,9 @@ class PropertiesDialog(QtWidgets.QDialog):
             else:
                 self.type_field.setCurrentIndex(5)
 
+    def initialize_widget_visibility(self):
+        self.update_widget_visibility(self.type_field.currentIndex())
+
     def update_widget_visibility(self, index):
         self.string_widget.setVisible(False)
         self.number_widget.setVisible(False)
@@ -184,6 +187,8 @@ class PropertiesDialog(QtWidgets.QDialog):
     def on_accept_button_clicked(self):
         if not self.entry:
             self.entry = Entry(self.name_field.text())
+        else:
+            self.entry.title = self.name_field.text()
 
         index = self.type_field.currentIndex()
         if index == 0:

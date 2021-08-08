@@ -11,6 +11,7 @@ class Attribute(Entry):
         self.attribute_name = self.get_attribute_name()
         self.attribute_object = attribute_object
         self.node_object = plug.node()
+        self.node_uuid = self.get_node_uuid()
         super(Attribute, self).__init__(self.attribute_name)
 
         try:
@@ -28,8 +29,9 @@ class Attribute(Entry):
     def get_attribute_long_name(self):
         return self.plug.name()
 
-    def node(self):
-        return self.plug.node()
+    def get_node_uuid(self):
+        dg_node_fn = om.MFnDependencyNode(self.node_object)
+        return dg_node_fn.uuid().asString()
 
     def is_non_keyable(self):
         return not self.plug.isKeyable()
@@ -173,4 +175,4 @@ class Attribute(Entry):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash(self.attribute_object)
+        return hash(self.node_uuid) + hash(self.attribute_name)

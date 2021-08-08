@@ -113,15 +113,9 @@ class Previewer(QtWidgets.QWidget):
 
     def refresh(self):
         active_file = self.parent().get_active_file()
-        text = active_file.get_formatted_text(self.include_indentation, self.indentation_size)
+        text = active_file.encode(self.include_indentation, self.indentation_size)
         current_widget = self.stacked_widget.currentWidget()
         current_widget.refresh(text)
-
-    def save_to_file(self, include_indentation):
-        path = QtWidgets.QFileDialog.getSaveFileName(self, "Save As", "", "JSON (*.json)")
-        if len(path[0]) > 0:
-            current_widget = self.stacked_widget.currentWidget()
-            current_widget.file.save_to_file(path[0], include_indentation)
 
     def on_tab_bar_clicked(self, tab_index):
         # Add a new tab if last tab is clicked.

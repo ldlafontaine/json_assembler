@@ -172,8 +172,11 @@ class Assembler(QtWidgets.QDialog):
         return current_widget.file
 
     def save_to_file(self):
-        save_with_indentation = self.save_with_indentation_action.isChecked()
-        self.previewer.save_to_file(save_with_indentation)
+        path = QtWidgets.QFileDialog.getSaveFileName(self, "Save As", "", "JSON (*.json)")
+        if len(path[0]) > 0:
+            include_indentation = self.save_with_indentation_action.isChecked()
+            indentation_size = self.previewer.indentation_size
+            self.get_active_file().save_to_file(path[0], include_indentation, indentation_size)
 
     def on_search_bar_text_edited(self):
         text = self.search_bar.text()

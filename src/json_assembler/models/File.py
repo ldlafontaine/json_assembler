@@ -1,6 +1,8 @@
 import json
 import io
-from collections import OrderedDict
+
+from EntryEncoder import EntryEncoder
+from EntryPreprocessor import EntryPreprocessor
 
 
 class File:
@@ -30,44 +32,16 @@ class File:
             children.extend(self.get_children(child_entry))
         return children
 
-    def encode_data(self):
-        entry_groups = OrderedDict()
-        for item in sorted(self.entries, key=lambda x: x.position):
-            if item.parent not in entry_groups:
-                entry_groups[item.parent] = OrderedDict()
-            entry_groups[item.parent][item] = item.value
-
-        if None in entry_groups:
-            return self.encode_data_level(entry_groups[None], entry_groups)
-        else:
-            return {}
-
-    def encode_data_level(self, level, groups):
-        encoded_data = OrderedDict()
-        for key, value in level.items():
-            encoded_key = key.title
-            if key in groups:
-                # Add as parent.
-                encoded_data[encoded_key] = self.encode_data_level(groups[key], groups)
-            else:
-                # Add as value.
-                encoded_data[encoded_key] = value
-        return encoded_data
-
-    def get_formatted_text(self, include_indentation, indentation_size):
-        encoded_data = self.encode_data()
-        if len(encoded_data) > 0:
+    def encode(self, include_indentation, indentation_size):
+        preprocessed_entries = EntryPreprocessor.preprocess(self.entries)
+        if len(preprocessed_entries) > 0:
             if include_indentation:
-                return json.dumps(encoded_data, indent=indentation_size)
+                return json.dumps(preprocessed_entries, ensure_ascii=False, cls=EntryEncoder, indent=indentation_size)
             else:
-                return json.dumps(encoded_data)
+                return json.dumps(preprocessed_entries, ensure_ascii=False, cls=EntryEncoder)
         else:
             return ""
 
     def save_to_file(self, path, include_indentation, indentation_size):
-        encoded_data = self.encode_data()
         with io.open(path, 'w', encoding='utf-8') as f:
-            if include_indentation:
-                f.write(json.dumps(encoded_data, ensure_ascii=False, indent=indentation_size))
-            else:
-                f.write(json.dumps(encoded_data, ensure_ascii=False))
+            f.write(self.encode(include_indentation, indentation_size))

@@ -97,7 +97,9 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
 
     def clear_entries(self):
         self.file.clear_entries()
-        self.refresh()
+        self.model().clear()
+        self.items_by_entry.clear()
+        self.outliner.updated.emit()
 
     def update_entry_parent(self, item, parent):
         entry = item.data()
@@ -107,98 +109,187 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
 
     def update_entry_position(self, item, position):
         entry = item.data()
-        if isinstance(entry, Entry):
-            entry.position = position
-            self.file.entries.remove(entry)
-            self.file.entries.add(entry)
+        entry.position = position
+        self.file.entries.remove(entry)
+        self.file.entries.add(entry)
 
     def update_entry_positions_by_parent(self, parent):
         for row in range(parent.rowCount()):
             child = parent.child(row)
             self.update_entry_position(child, row)
 
+    def group_items_by_parent(self, items):
+        items_by_parent = {}
+        for item in items:
+            parent = item.index().parent()  # The parent index is used as QModelIndex is hashable, but QStandardItem is not.
+            if parent not in items_by_parent:
+                items_by_parent[parent] = [item]
+            else:
+                items_by_parent[parent].append(item)
+        return items_by_parent
+
+    def get_selected_items_by_parent(self):
+        selected_indexes = self.selectionModel().selectedIndexes()
+        selected_items = []
+        for index in selected_indexes:
+            selected_items.append(self.model().itemFromIndex(index))
+        return self.group_items_by_parent(selected_items)
+
+    def get_parent_item(self, item):
+        parent = item.parent()
+        if not parent:
+            parent = self.model().invisibleRootItem()
+        return parent
+    
+    def get_parent_item_from_index(self, index):
+        if index.isValid() and index != QtCore.QModelIndex():
+            return self.model().itemFromIndex(index)
+        else:
+            return self.model().invisibleRootItem()
+
+    def get_nearest_sibling_to_items(self, items):
+        indexes = [x.index() for x in items]
+        for index in indexes:
+            nearest_sibling = index.siblingAtRow(index.row() + 1)
+            if nearest_sibling.isValid() and nearest_sibling not in indexes:
+                return self.model().itemFromIndex(nearest_sibling)
+        return None
+
+    def are_entry_keys_unique(self, parent, indexes):
+        raise NotImplementedError
+
+    def can_items_move_up(self, items):
+        for item in items:
+            if item.index().row() <= 0:
+                return False
+        return True
+
+    def can_items_move_down(self, items):
+        parent = None
+        for item in items:
+            if not parent:
+                parent = self.get_parent_item(item)
+            if item.index().row() >= parent.rowCount() - 1:
+                return False
+        return True
+
+    def can_items_move_left(self, items):
+        for item in items:
+            if not item.parent():
+                return False
+        return True
+
+    def can_items_move_right(self, item, nearest_sibling):
+        if nearest_sibling:
+            return True
+
     def on_selection_changed(self, selected, deselected):
         if self.selectionModel().hasSelection():
             self.outliner.selection_activated.emit()
 
     def on_move_up_button_pressed(self):
-        selected_indexes = self.selectionModel().selectedIndexes()
-        selected_indexes.sort(key=lambda i: i.row())
-        for index in selected_indexes:
-            if index.row() <= 0:
+        item_groups = self.get_selected_items_by_parent()
+        for parent_index, item_group in item_groups.items():
+
+            # Perform validation.
+            if not self.can_items_move_up(item_group):
                 continue
-            item = self.model().itemFromIndex(index)
-            parent = item.parent()
-            if not parent:
-                parent = self.model().invisibleRootItem()
-            row = parent.takeRow(index.row())
-            parent.insertRow(index.row() - 1, row)
 
-            # Select reinserted item.
-            self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
+            # Move items.
+            parent = self.get_parent_item_from_index(parent_index)
+            sorted_items = sorted(item_group, key=lambda i: i.index().row())
+            for item in sorted_items:
+                index = item.index()
+                row = parent.takeRow(index.row())
+                parent.insertRow(index.row() - 1, row)
 
-            # Update model.
+                # Select reinserted item.
+                self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
+
+            # Update item group entries.
             self.update_entry_positions_by_parent(parent)
+
         self.outliner.updated.emit()
 
     def on_move_down_button_pressed(self):
-        selected_indexes = self.selectionModel().selectedIndexes()
-        selected_indexes.sort(key=lambda i: i.row(), reverse=True)
-        for index in selected_indexes:
-            item = self.model().itemFromIndex(index)
-            parent = item.parent()
-            if not parent:
-                parent = self.model().invisibleRootItem()
-            if index.row() >= parent.rowCount() - 1:
+        item_groups = self.get_selected_items_by_parent()
+        for parent_index, item_group in item_groups.items():
+
+            # Perform validation.
+            if not self.can_items_move_down(item_group):
                 continue
-            row = parent.takeRow(index.row())
-            parent.insertRow(index.row() + 1, row)
 
-            # Select reinserted item.
-            self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
+            # Move items.
+            parent = self.get_parent_item_from_index(parent_index)
+            sorted_items = sorted(item_group, key=lambda i: i.index().row(), reverse=True)
+            for item in sorted_items:
+                index = item.index()
+                row = parent.takeRow(index.row())
+                parent.insertRow(index.row() + 1, row)
 
-            # Update model.
+                # Select reinserted item.
+                self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
+
+            # Update item group entries.
             self.update_entry_positions_by_parent(parent)
+
         self.outliner.updated.emit()
 
     def on_move_left_button_pressed(self):
-        selected_indexes = self.selectionModel().selectedIndexes()
-        for index in selected_indexes:
-            item = self.model().itemFromIndex(index)
-            parent = item.parent()
-            if not parent:
-                return
-            grandparent = parent.parent()
-            if not grandparent:
-                grandparent = self.model().invisibleRootItem()
-            row = parent.takeRow(index.row())
-            grandparent.insertRow(index.parent().row(), row)
-            self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
+        item_groups = self.get_selected_items_by_parent()
+        for parent_index, item_group in item_groups.items():
 
-            # Update model.
-            self.update_entry_parent(item, grandparent)
+            # Perform validation.
+            if not self.can_items_move_left(item_group):
+                continue
+
+            # Move items.
+            parent = self.get_parent_item_from_index(parent_index)
+            grandparent = self.get_parent_item(parent)
+            sorted_items = sorted(item_group, key=lambda i: i.index().row())
+            for item in sorted_items:
+                index = item.index()
+                row = parent.takeRow(index.row())
+                grandparent.insertRow(index.parent().row(), row)
+
+                # Select reinserted item.
+                self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
+
+                # Update item entry.
+                self.update_entry_parent(item, grandparent)
+
+            # Update item group entries.
             self.update_entry_positions_by_parent(parent)
             self.update_entry_positions_by_parent(grandparent)
+
         self.outliner.updated.emit()
 
     def on_move_right_button_pressed(self):
-        selected_indexes = self.selectionModel().selectedIndexes()
-        for index in selected_indexes:
-            item = self.model().itemFromIndex(index)
-            parent = item.parent()
-            if not parent:
-                parent = self.model().invisibleRootItem()
-            nearest_sibling = index.siblingAtRow(index.row() + 1)
-            nearest_sibling_item = self.model().itemFromIndex(nearest_sibling)
-            if not nearest_sibling_item:
-                return
-            row = parent.takeRow(index.row())
-            nearest_sibling_item.insertRow(0, row)
-            self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
-            self.setExpanded(index, True)
+        item_groups = self.get_selected_items_by_parent()
+        for parent_index, item_group in item_groups.items():
 
-            # Update model.
-            self.update_entry_parent(item, nearest_sibling_item)
+            # Perform validation.
+            sorted_items = sorted(item_group, key=lambda i: i.index().row())
+            nearest_sibling = self.get_nearest_sibling_to_items(sorted_items)
+            if not self.can_items_move_right(sorted_items, nearest_sibling):
+                continue
+
+            # Move items.
+            parent = self.get_parent_item_from_index(parent_index)
+            for item in sorted_items:
+                index = item.index()
+                row = parent.takeRow(index.row())
+                nearest_sibling.insertRow(0, row)
+
+                # Select and expand reinserted item.
+                self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
+                self.setExpanded(index, True)
+
+                # Update item entry.
+                self.update_entry_parent(item, nearest_sibling)
+
+            # Update item group entries.
             self.update_entry_positions_by_parent(parent)
-            self.update_entry_positions_by_parent(nearest_sibling_item)
+            self.update_entry_positions_by_parent(nearest_sibling)
+
         self.outliner.updated.emit()

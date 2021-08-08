@@ -83,10 +83,6 @@ class Outliner(QtWidgets.QWidget):
         stacked_widget = self.stacked_widget.widget(index)
         self.stacked_widget.removeWidget(stacked_widget)
 
-    def refresh(self):
-        current_stacked_widget = self.stacked_widget.currentWidget()
-        current_stacked_widget.refresh()
-
     def add_entries(self, entries):
         current_stacked_widget = self.stacked_widget.currentWidget()
         current_stacked_widget.add_entries(entries)
@@ -120,7 +116,8 @@ class Outliner(QtWidgets.QWidget):
         result = dialog.exec_()
         if result == QtWidgets.QDialog.Accepted:
             item.setData(dialog.entry)
-            self.refresh()
+            item.setText(dialog.entry.title)
+            self.updated.emit()
 
     def on_move_up_button_pressed(self):
         current_stacked_widget = self.stacked_widget.currentWidget()
