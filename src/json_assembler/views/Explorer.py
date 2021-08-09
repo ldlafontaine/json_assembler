@@ -147,16 +147,6 @@ class Explorer(QtWidgets.QWidget):
 
         return data
 
-    def propagate_selection_to_children(self, item):
-        selection_state = item.isSelected()
-        child_count = item.childCount()
-        child_index = 0
-        while child_index < child_count:
-            child_item = item.child(child_index)
-            child_item.setSelected(selection_state)
-            self.propagate_selection_to_children(child_item)
-            child_index += 1
-
     def set_show_non_keyable_enabled(self, state):
         self.show_non_keyable_enabled = state
         self.refresh()
@@ -170,12 +160,7 @@ class Explorer(QtWidgets.QWidget):
         self.refresh()
 
     def on_item_selection_changed(self):
-        self.blockSignals(True)
         selected_items = self.tree_widget.selectedItems()
-        # Propagate selection to children.
-        for item in selected_items:
-            self.propagate_selection_to_children(item)
-        self.blockSignals(False)
         if len(selected_items) > 0:
             self.selection_activated.emit()
 

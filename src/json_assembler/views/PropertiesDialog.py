@@ -126,33 +126,6 @@ class PropertiesDialog(QtWidgets.QDialog):
     def sizeHint(*args, **kwargs):
         return QtCore.QSize(350, 175)
 
-    def value_is_string(self, entry):
-        if isinstance(entry.value, str):
-            return True
-        return False
-
-    def value_is_number(self, entry):
-        number_types = [int, float, complex]
-        for number_type in number_types:
-            if isinstance(entry.value, number_type):
-                return True
-        return False
-
-    def value_is_object(self, entry):
-        if isinstance(entry.value, dict):
-            return True
-        return False
-
-    def value_is_array(self, entry):
-        if isinstance(entry.value, list):
-            return True
-        return False
-
-    def value_is_bool(self, entry):
-        if isinstance(entry.value, bool):
-            return True
-        return False
-
     def initialize_widget_values(self):
         if self.entry:
             self.name_field.setText(self.entry.title)
@@ -160,15 +133,15 @@ class PropertiesDialog(QtWidgets.QDialog):
             if isinstance(self.entry, Attribute) or isinstance(self.entry, Node):
                 self.type_field.setDisabled(True)
                 self.type_field.setCurrentIndex(6)
-            elif self.value_is_string(self.entry):
+            elif self.entry.is_string():
                 self.type_field.setCurrentIndex(0)
-            elif self.value_is_number(self.entry):
+            elif self.entry.is_number():
                 self.type_field.setCurrentIndex(1)
-            elif self.value_is_object(self.entry):
+            elif self.entry.is_object():
                 self.type_field.setCurrentIndex(2)
-            elif self.value_is_array(self.entry):
+            elif self.entry.is_array():
                 self.type_field.setCurrentIndex(3)
-            elif self.value_is_bool(self.entry):
+            elif self.entry.is_bool():
                 self.type_field.setCurrentIndex(4)
             else:
                 self.type_field.setCurrentIndex(5)

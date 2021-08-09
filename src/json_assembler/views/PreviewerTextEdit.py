@@ -21,7 +21,6 @@ class PreviewerTextEdit(QtWidgets.QPlainTextEdit):
     def create_connections(self):
         self.blockCountChanged.connect(self.update_line_number_area_width)
         self.updateRequest.connect(self.update_line_number_area)
-        # self.cursorPositionChanged.connect(self.highlight_current_line)
 
     def line_number_area_width(self):
         digits = 1
@@ -49,18 +48,6 @@ class PreviewerTextEdit(QtWidgets.QPlainTextEdit):
         self.line_number_area.setGeometry(QtCore.QRect(contents_rect.left(), contents_rect.top(),
                                                        self.line_number_area_width(), contents_rect.height()))
 
-    def highlight_current_line(self):
-        extra_selections = []
-        if not self.isReadOnly():
-            selection = QtWidgets.QTextEdit.ExtraSelection()
-            line_color = QtGui.QColor(255, 255, 150)
-            selection.format.setBackground(line_color)
-            selection.format.setProperty(QtGui.QTextFormat.FullWidthSelection, True)
-            selection.cursor = self.textCursor()
-            selection.cursor.clearSelection()
-            extra_selections.append(selection)
-        self.setExtraSelections(extra_selections)
-
     def line_number_area_paint_event(self, event):
         painter = QtGui.QPainter(self.line_number_area)
 
@@ -83,6 +70,3 @@ class PreviewerTextEdit(QtWidgets.QPlainTextEdit):
             top = bottom
             bottom = top + self.blockBoundingRect(block).height()
             block_number += 1
-
-    def refresh(self, text):
-        self.setPlainText(text)

@@ -143,8 +143,8 @@ class Assembler(QtWidgets.QDialog):
         self.remove_button.clicked.connect(self.on_remove_button_clicked)
         self.save_action.triggered.connect(self.save_to_file)
 
-        self.include_indentation_button.toggled.connect(self.previewer.set_include_indentation)
-        self.indentation_size_field.valueChanged.connect(self.previewer.set_indentation_size)
+        self.include_indentation_button.toggled.connect(self.refresh)
+        self.indentation_size_field.valueChanged.connect(self.refresh)
 
         self.add_tab_action.triggered.connect(self.previewer.add_tab)
         self.rename_tab_action.triggered.connect(self.previewer.rename_current_tab)
@@ -156,7 +156,7 @@ class Assembler(QtWidgets.QDialog):
         self.previewer.tab_closed.connect(self.outliner.close_tab)
         self.explorer.selection_activated.connect(self.outliner.clear_selection)
         self.outliner.selection_activated.connect(self.explorer.tree_widget.clearSelection)
-        self.outliner.updated.connect(self.previewer.refresh)
+        self.outliner.updated.connect(self.refresh)
 
     def create_filter_action(self, label, default_state):
         action = QtWidgets.QAction(label, self)
@@ -165,14 +165,19 @@ class Assembler(QtWidgets.QDialog):
         return action
 
     def get_active_file(self):
-        current_widget = self.outliner.stacked_widget.currentWidget()
-        return current_widget.file
+        return self.outliner.stacked_widget.currentWidget().file
+
+    def refresh(self):
+        include_indentation = self.include_indentation_button.isChecked()
+        indentation_size = self.indentation_size_field.value()
+        text = self.get_active_file().encode(include_indentation, indentation_size)
+        self.previewer.set_current_widget_contents(text)
 
     def save_to_file(self):
         path = QtWidgets.QFileDialog.getSaveFileName(self, "Save As", "", "JSON (*.json)")
         if len(path[0]) > 0:
             include_indentation = self.save_with_indentation_action.isChecked()
-            indentation_size = self.previewer.indentation_size
+            indentation_size = self.indentation_size_field.value()
             self.get_active_file().save_to_file(path[0], include_indentation, indentation_size)
 
     def on_add_button_clicked(self):

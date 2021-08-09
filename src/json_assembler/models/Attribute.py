@@ -17,8 +17,8 @@ class Attribute(Entry):
         try:
             self.value = self.get_value()
         except:
-            # self.value = "ERROR"
-            self.value = str(sys.exc_info())
+            raise AttributeError
+            #self.value = str(sys.exc_info())
 
     def get_icon_path(self):
         return ":default.svg"

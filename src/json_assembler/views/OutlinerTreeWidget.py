@@ -78,7 +78,7 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             self.append_item(item)
             self.file.add_entry(entry)
 
-        self.outliner.updated.emit(self.file)
+        self.outliner.updated.emit()
 
     def remove_entries(self, external_entries):
         # Get entries from selected items.
@@ -111,13 +111,13 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             # Remove the entry from dictionary.
             self.items_by_entry.pop(entry, None)
 
-        self.outliner.updated.emit(self.file)
+        self.outliner.updated.emit()
 
     def clear_entries(self):
         self.file.clear_entries()
         self.model().clear()
         self.items_by_entry.clear()
-        self.outliner.updated.emit(self.file)
+        self.outliner.updated.emit()
 
     def update_entry_parent(self, item, parent):
         entry = item.data()
@@ -136,34 +136,35 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             child = parent.child(row)
             self.update_entry_position(child, row)
 
-    def group_items_by_parent(self, items):
+    def get_item_groups(self, items):
         items_by_parent = {}
         for item in items:
             parent = item.index().parent()  # The parent index is used as QModelIndex is hashable, but QStandardItem is not.
             if parent not in items_by_parent:
-                items_by_parent[parent] = [item]
-            else:
-                items_by_parent[parent].append(item)
-        return items_by_parent
+                items_by_parent[parent] = []
+            items_by_parent[parent].append(item)
 
-    def get_selected_items_by_parent(self):
+        item_groups = []
+        for parent_index, items in items_by_parent.items():
+            parent = self.model().itemFromIndex(parent_index)
+            if not parent:
+                parent = self.model().invisibleRootItem()
+            item_groups.append([parent, items])
+
+        return item_groups
+
+    def get_selected_item_groups(self):
         selected_indexes = self.selectionModel().selectedIndexes()
         selected_items = []
         for index in selected_indexes:
             selected_items.append(self.model().itemFromIndex(index))
-        return self.group_items_by_parent(selected_items)
+        return self.get_item_groups(selected_items)
 
     def get_parent_item(self, item):
         parent = item.parent()
         if not parent:
             parent = self.model().invisibleRootItem()
         return parent
-    
-    def get_parent_item_from_index(self, index):
-        if index.isValid() and index != QtCore.QModelIndex():
-            return self.model().itemFromIndex(index)
-        else:
-            return self.model().invisibleRootItem()
 
     def get_nearest_sibling_to_items(self, items):
         indexes = [x.index() for x in items]
@@ -173,31 +174,24 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
                 return self.model().itemFromIndex(nearest_sibling)
         return None
 
-    def are_entry_keys_unique(self, parent, indexes):
-        raise NotImplementedError
-
     def can_items_move_up(self, items):
         for item in items:
             if item.index().row() <= 0:
                 return False
         return True
 
-    def can_items_move_down(self, items):
-        parent = None
+    def can_items_move_down(self, items, parent):
         for item in items:
-            if not parent:
-                parent = self.get_parent_item(item)
             if item.index().row() >= parent.rowCount() - 1:
                 return False
         return True
 
-    def can_items_move_left(self, items):
-        for item in items:
-            if not item.parent():
-                return False
+    def can_items_move_left(self, parent):
+        if parent is self.model().invisibleRootItem():
+            return False
         return True
 
-    def can_items_move_right(self, item, nearest_sibling):
+    def can_items_move_right(self, nearest_sibling):
         if nearest_sibling:
             return True
 
@@ -209,6 +203,8 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             self.add_entries(entries)
 
     def edit_entry(self):
+        if not self.selectionModel().hasSelection():
+            return
         index = self.selectionModel().currentIndex()
         item = self.model().itemFromIndex(index)
         entry = item.data()
@@ -217,18 +213,17 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
         if result == QtWidgets.QDialog.Accepted:
             item.setData(dialog.entry)
             item.setText(dialog.entry.title)
-            self.outliner.updated.emit(self.file)
+            self.outliner.updated.emit()
 
     def move_up(self):
-        item_groups = self.get_selected_items_by_parent()
-        for parent_index, item_group in item_groups.items():
+        item_groups = self.get_selected_item_groups()
+        for parent, item_group in item_groups:
 
             # Perform validation.
             if not self.can_items_move_up(item_group):
                 continue
 
             # Move items.
-            parent = self.get_parent_item_from_index(parent_index)
             sorted_items = sorted(item_group, key=lambda i: i.index().row())
             for item in sorted_items:
                 index = item.index()
@@ -241,18 +236,17 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             # Update item group entries.
             self.update_entry_positions_by_parent(parent)
 
-        self.outliner.updated.emit(self.file)
+        self.outliner.updated.emit()
 
     def move_down(self):
-        item_groups = self.get_selected_items_by_parent()
-        for parent_index, item_group in item_groups.items():
+        item_groups = self.get_selected_item_groups()
+        for parent, item_group in item_groups:
 
             # Perform validation.
-            if not self.can_items_move_down(item_group):
+            if not self.can_items_move_down(item_group, parent):
                 continue
 
             # Move items.
-            parent = self.get_parent_item_from_index(parent_index)
             sorted_items = sorted(item_group, key=lambda i: i.index().row(), reverse=True)
             for item in sorted_items:
                 index = item.index()
@@ -265,24 +259,23 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             # Update item group entries.
             self.update_entry_positions_by_parent(parent)
 
-        self.outliner.updated.emit(self.file)
+        self.outliner.updated.emit()
 
     def move_left(self):
-        item_groups = self.get_selected_items_by_parent()
-        for parent_index, item_group in item_groups.items():
+        item_groups = self.get_selected_item_groups()
+        for parent, item_group in item_groups:
 
             # Perform validation.
-            if not self.can_items_move_left(item_group):
+            if not self.can_items_move_left(parent):
                 continue
 
             # Move items.
-            parent = self.get_parent_item_from_index(parent_index)
             grandparent = self.get_parent_item(parent)
             sorted_items = sorted(item_group, key=lambda i: i.index().row())
             for item in sorted_items:
                 index = item.index()
                 row = parent.takeRow(index.row())
-                grandparent.insertRow(index.parent().row(), row)
+                grandparent.insertRow(parent.index().row(), row)
 
                 # Select reinserted item.
                 self.selectionModel().select(item.index(), QtCore.QItemSelectionModel.Select)
@@ -294,20 +287,19 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             self.update_entry_positions_by_parent(parent)
             self.update_entry_positions_by_parent(grandparent)
 
-        self.outliner.updated.emit(self.file)
+        self.outliner.updated.emit()
 
     def move_right(self):
-        item_groups = self.get_selected_items_by_parent()
-        for parent_index, item_group in item_groups.items():
+        item_groups = self.get_selected_item_groups()
+        for parent, item_group in item_groups:
 
             # Perform validation.
-            sorted_items = sorted(item_group, key=lambda i: i.index().row())
+            sorted_items = sorted(item_group, key=lambda i: i.index().row(), reverse=True)
             nearest_sibling = self.get_nearest_sibling_to_items(sorted_items)
-            if not self.can_items_move_right(sorted_items, nearest_sibling):
+            if not self.can_items_move_right(nearest_sibling):
                 continue
 
             # Move items.
-            parent = self.get_parent_item_from_index(parent_index)
             for item in sorted_items:
                 index = item.index()
                 row = parent.takeRow(index.row())
@@ -324,10 +316,12 @@ class OutlinerTreeWidget(QtWidgets.QTreeView):
             self.update_entry_positions_by_parent(parent)
             self.update_entry_positions_by_parent(nearest_sibling)
 
-        self.outliner.updated.emit(self.file)
+        self.outliner.updated.emit()
 
     def on_selection_changed(self, selected, deselected):
-        if self.selectionModel().hasSelection():
+        has_selection = self.selectionModel().hasSelection()
+        self.outliner.set_buttons_enabled(has_selection)
+        if has_selection:
             self.outliner.selection_activated.emit()
 
     def on_context_menu_requested(self, point):

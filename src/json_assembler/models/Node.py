@@ -39,8 +39,6 @@ class Node(Entry):
 
     @staticmethod
     def get_node_name(node):
-        if type(node) != om.MObject:
-            raise TypeError
         dg_node_fn = om.MFnDependencyNode(node)
         return dg_node_fn.name()
 
@@ -55,7 +53,10 @@ class Node(Entry):
         for attribute_index in range(attribute_count):
             attribute_object = depend_fn.attribute(attribute_index)
             attribute_plug = depend_fn.findPlug(attribute_object, True)
-            attributes.append(Attribute(attribute_plug, attribute_object))
+            try:
+                attributes.append(Attribute(attribute_plug, attribute_object))
+            except AttributeError:
+                continue
         return attributes
 
     def __eq__(self, other):

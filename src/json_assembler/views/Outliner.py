@@ -5,7 +5,7 @@ from OutlinerTreeWidget import OutlinerTreeWidget
 
 class Outliner(QtWidgets.QWidget):
 
-    updated = QtCore.Signal(object)
+    updated = QtCore.Signal()
     selection_activated = QtCore.Signal()
 
     def __init__(self, parent=None):
@@ -53,6 +53,8 @@ class Outliner(QtWidgets.QWidget):
         self.move_right_button = QtWidgets.QToolButton()
         self.move_right_button.setIcon(QtGui.QIcon(":moveUVRight.png"))
         self.move_right_button.setStatusTip("Move entries right")
+
+        self.set_buttons_enabled(False)
 
     def create_layout(self):
         top_layout = QtWidgets.QVBoxLayout()
@@ -114,3 +116,10 @@ class Outliner(QtWidgets.QWidget):
     def clear_selection(self):
         current_stacked_widget = self.stacked_widget.currentWidget()
         current_stacked_widget.clearSelection()
+
+    def set_buttons_enabled(self, enabled):
+        self.edit_button.setEnabled(enabled)
+        self.move_up_button.setEnabled(enabled)
+        self.move_down_button.setEnabled(enabled)
+        self.move_left_button.setEnabled(enabled)
+        self.move_right_button.setEnabled(enabled)
