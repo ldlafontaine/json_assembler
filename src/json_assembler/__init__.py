@@ -1,6 +1,5 @@
 from views.Assembler import Assembler
 
-
 def run():
     try:
         dialog.close()

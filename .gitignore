@@ -1,4 +1,4 @@
 .idea
 *.pyc
-tests
 src/__init__.py
+userSetup.py

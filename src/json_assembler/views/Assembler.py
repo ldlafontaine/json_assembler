@@ -181,11 +181,11 @@ class Assembler(QtWidgets.QDialog):
             self.get_active_file().save_to_file(path[0], include_indentation, indentation_size)
 
     def on_add_button_clicked(self):
-        data = self.explorer.get_data_from_selected(True)
+        data = self.explorer.get_selected_entries(True)
         self.outliner.add_entries(data)
 
     def on_remove_button_clicked(self):
-        explorer_entries = self.explorer.get_data_from_selected()
+        explorer_entries = self.explorer.get_selected_entries()
         self.outliner.remove_entries(explorer_entries)
 
     def on_finished(self, result):

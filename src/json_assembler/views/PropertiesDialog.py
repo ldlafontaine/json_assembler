@@ -2,8 +2,8 @@ from PySide2 import QtWidgets, QtCore, QtGui
 
 from ..models import maya_utilities
 from ..models.Entry import Entry
-from ..models.Attribute import Attribute
-from ..models.Node import Node
+from ..models.AttributeEntry import AttributeEntry
+from ..models.NodeEntry import NodeEntry
 
 
 class PropertiesDialog(QtWidgets.QDialog):
@@ -130,7 +130,7 @@ class PropertiesDialog(QtWidgets.QDialog):
         if self.entry:
             self.name_field.setText(self.entry.title)
 
-            if isinstance(self.entry, Attribute) or isinstance(self.entry, Node):
+            if isinstance(self.entry, AttributeEntry) or isinstance(self.entry, NodeEntry):
                 self.type_field.setDisabled(True)
                 self.type_field.setCurrentIndex(6)
             elif self.entry.is_string():

@@ -3,7 +3,7 @@ from datetime import datetime
 
 class Entry(object):
 
-    def __init__(self, title):
+    def __init__(self, title="New Entry"):
         self.title = title
         self.parent = None
         self.position = 0

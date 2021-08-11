@@ -1,6 +1,6 @@
 from PySide2 import QtWidgets, QtCore, QtGui
 
-from ..models.Attribute import Attribute
+from ..models.AttributeEntry import AttributeEntry
 from ..models import maya_utilities
 
 
@@ -68,12 +68,12 @@ class Explorer(QtWidgets.QWidget):
         return QtCore.QSize(225, 225)
 
     def populate(self):
-        for node in maya_utilities.get_active_selection():
+        for node in maya_utilities.get_entries_from_selection():
             item = QtWidgets.QTreeWidgetItem([node.title])
             item.setData(0, QtCore.Qt.UserRole, node)
             self.tree_widget.addTopLevelItem(item)
 
-            attributes = node.get_all_attributes()
+            attributes = node.get_attribute_entries()
             for attribute in attributes:
                 if not self.check_filters(attribute):
                     continue
@@ -88,7 +88,7 @@ class Explorer(QtWidgets.QWidget):
         self.search(self.search_term)
 
     def check_filters(self, data):
-        if isinstance(data, Attribute):
+        if isinstance(data, AttributeEntry):
             if self.show_connected_only_enabled and not data.is_connected():
                 return False
             elif not self.show_non_keyable_enabled and not data.is_non_keyable():
@@ -132,12 +132,12 @@ class Explorer(QtWidgets.QWidget):
             else:
                 item.setHidden(False)
 
-    def get_data_from_selected(self, parents=False):
+    def get_selected_entries(self, parents=False):
         data = set()
         selected_items = self.tree_widget.selectedItems()
         for item in selected_items:
             entry = item.data(0, QtCore.Qt.UserRole)
-            if isinstance(entry, Attribute):
+            if isinstance(entry, AttributeEntry):
                 parent_item = item.parent()
                 parent_entry = parent_item.data(0, QtCore.Qt.UserRole)
                 entry.parent = parent_entry

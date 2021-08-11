@@ -1,9 +1,9 @@
 import maya.OpenMaya as om
 
-from Node import Node
+from NodeEntry import NodeEntry
 
 
-def get_active_selection():
+def get_nodes_from_selection():
     active_selection = om.MSelectionList()
     om.MGlobal_getActiveSelectionList(active_selection)
     selection_iter = om.MItSelectionList(active_selection)
@@ -11,10 +11,18 @@ def get_active_selection():
     while not selection_iter.isDone():
         dg_node = om.MObject()
         selection_iter.getDependNode(dg_node)
-        node = Node(dg_node)
-        selected_nodes.append(node)
+        selected_nodes.append(dg_node)
         selection_iter.next()
     return selected_nodes
+
+
+def get_entries_from_nodes(nodes):
+    return [NodeEntry(node) for node in nodes]
+
+
+def get_entries_from_selection():
+    nodes = get_nodes_from_selection()
+    return get_entries_from_nodes(nodes)
 
 
 def register_selection_changed_callback(callback):
